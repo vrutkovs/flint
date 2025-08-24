@@ -4,12 +4,11 @@ import io
 from typing import Optional
 
 
-from PIL import Image
-
 from telegram import Update
 from telegram.ext import ContextTypes
 
 
+from plugins import photo
 from telega.settings import Settings
 
 
@@ -69,40 +68,6 @@ class Telega:
             self.settings.logger.error("Failed to download file", error=str(e), update_id=update.update_id)
             return None
 
-    async def generate_text_for_image(self, image: Image.Image, prompt: str = "Describe this image in detail") -> str:
-        """
-        Generate text description for an image using AI.
-
-        Args:
-            image: PIL Image object
-            prompt: Text prompt for AI generation
-
-        Returns:
-            Generated text description
-        """
-        try:
-            # Convert PIL image to bytes
-            img_buffer = io.BytesIO()
-            image.save(img_buffer, format='PNG')
-            img_buffer.seek(0)
-
-            # Use GenAI to generate text
-            response = await self.settings.genai_client.aio.models.generate_content(
-                model=self.settings.model,
-                contents=[
-                    prompt,
-                    image,
-                ]
-            )
-            result = response.text
-            if result is None:
-                raise ValueError("AI response is None")
-            return result.strip()
-
-        except Exception as e:
-            self.settings.logger.error("Failed to generate text for image", error=str(e))
-            return "Sorry, I couldn't analyze this image. Please try again."
-
     async def handle_photo_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         Handle incoming Telegram messages with media content.
@@ -131,12 +96,13 @@ class Telega:
             return
 
         try:
-            # Open image from buffer
-            image = Image.open(file_buffer)
-
             # Generate description
             self.settings.logger.info("Generating image description", update_id=update.update_id)
-            description = await self.generate_text_for_image(image)
+            description = await photo.generate_text_for_image(
+                self.settings.genai_client,
+                file_buffer,
+                self.settings.model
+            )
 
             self.settings.logger.info(
                 "Generated description",
