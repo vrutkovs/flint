@@ -18,13 +18,10 @@ async def generate_text_for_image(settings: Settings, file_buffer: io.BytesIO,  
         Generated text description
     """
     image = Image.open(file_buffer)
-    # img_buffer = io.BytesIO()
-    # image.save(img_buffer, format='PNG')
-    # img_buffer.seek(0)
 
     # Use GenAI to generate text
     response = await settings.genai_client.aio.models.generate_content(
-        model=settings.model,
+        model=settings.model_name,
         contents=[
             prompt,
             image,

@@ -2,7 +2,6 @@ import os
 import sys
 from typing import Final
 import datetime
-import pytz
 from dotenv import load_dotenv, find_dotenv
 
 import structlog
@@ -36,7 +35,23 @@ if not MODEL_NAME:
     print("MODEL_NAME environment variable is required")
     sys.exit(1)
 
+HA_URL = os.environ.get("HA_URL")
+if not HA_URL:
+    print("HA_URL environment variable is required")
+    sys.exit(1)
+
+HA_TOKEN = os.environ.get("HA_TOKEN")
+if not HA_TOKEN:
+    print("HA_TOKEN environment variable is required")
+    sys.exit(1)
+
+HA_WEATHER_ENTITY_ID = os.environ.get("HA_WEATHER_ENTITY_ID")
+if not HA_WEATHER_ENTITY_ID:
+    print("HA_WEATHER_ENTITY_ID environment variable is required")
+    sys.exit(1)
+
 SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
+TZ = os.getenv('TZ', 'UTC')
 
 # Configure structured logging
 log = structlog.get_logger()
@@ -51,7 +66,15 @@ except Exception as e:
     sys.exit(1)
 
 # Create Settings instance
-settings = Settings(genai_client=genai_client, logger=log, model_name=MODEL_NAME, chat_id=CHAT_ID)
+settings = Settings(
+    genai_client=genai_client,
+    logger=log,
+    model_name=MODEL_NAME,
+    chat_id=CHAT_ID,
+    tz=TZ,
+    ha_url=HA_URL,
+    ha_token=HA_TOKEN,
+    ha_weather_entity_id=HA_WEATHER_ENTITY_ID)
 log.info('Settings instance created')
 
 # Create Telega instance
@@ -83,11 +106,9 @@ if SCHEDULED_AGENDA_TIME:
         sys.exit(1)
 
     hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(':'))
-
-    tz = pytz.timezone(os.getenv('TZ', 'UTC'))
-    schedule_time = datetime.time(hour=hour, minute=minute, tzinfo=tz)
-
+    schedule_time = datetime.time(hour=hour, minute=minute, tzinfo=settings.timezone)
     scheduleData = ScheduleData(settings=settings, genai_client=genai_client)
+
     job_queue.run_daily(
         send_agenda,
         time=schedule_time,
@@ -95,6 +116,14 @@ if SCHEDULED_AGENDA_TIME:
         data=scheduleData,
     )
     log.info(f"Scheduled agenda updated at {schedule_time}")
+
+    # job_queue.run_once(
+    #     send_agenda,
+    #     when=datetime.datetime.now(settings.timezone),
+    #     chat_id=int(CHAT_ID),
+    #     data=scheduleData,
+    # )
+
 
 # Start the bot
 try:

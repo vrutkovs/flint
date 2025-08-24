@@ -3,6 +3,8 @@ from telegram.ext import ContextTypes
 
 import structlog
 
+from plugins.homeassistant import HomeAssistant
+
 class ScheduleData:
     def __init__(self, settings: Settings, genai_client):
         self.settings = settings
@@ -31,7 +33,7 @@ Weather Update:
     {weather_data}
 
 Upcoming Calendar Events (next 24 hours):
-    {calendar_events}
+    {calendar_data}
 
 Please synthesize this into a single, coherent message, adhering to your
 persona. If a section is empty or explicitly states no information,
@@ -60,21 +62,25 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
 
     settings.logger.info("Generating agenda")
 
-    weather_data = """
-    Currently: 16.7°C, partlycloudy.
-    Precipitation Chance: 0.0%.
-    Today's Forecast: High of 23.9°C, Low of 14.5°C.
-    """
+    ha = HomeAssistant(settings.ha_url, settings.ha_token, settings.logger, settings.timezone)
+    # try:
+    #     calendar_data = ha.get_calendar(settings.ha_calendar_entity)
+    # except Exception as e:
+    #     settings.logger.error(f"Error fetching calendar data: {e}")
+    #     calendar_data = None
+    calendar_data = None
 
-    calendar_events = """
-    - Recharge day (All day (Fri, Aug 22))
-    - Vadim / VictoriaMetrics (3:00 PM on Fri, Aug 22)
-    """
+    try:
+        weather_data = ha.get_weather_forecast(settings.ha_weather_entity_id)
+    except Exception as e:
+        settings.logger.error(f"Error fetching weather data: {e}")
+        weather_data = None
+    weather_data = None
 
-    prompt = PROMPT_TEMPLATE.format(weather_data=weather_data, calendar_events=calendar_events)
+    prompt = PROMPT_TEMPLATE.format(weather_data=weather_data, calendar_data=calendar_data)
 
     response = await genai_client.aio.models.generate_content(
-        model=settings.model,
+        model=settings.model_name,
         contents=[prompt]
     )
     text = response.text

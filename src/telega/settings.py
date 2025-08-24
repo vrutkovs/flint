@@ -1,6 +1,5 @@
 """Settings module for Telega bot configuration."""
-
-
+import pytz
 import structlog
 from google import genai
 
@@ -13,6 +12,10 @@ class Settings:
         genai_client: genai.Client,
         logger: structlog.BoundLogger,
         chat_id: str,
+        tz: str,
+        ha_url: str,
+        ha_token: str,
+        ha_weather_entity_id: str,
         model_name: str = "gemini-2.5-flash"
     ):
         """
@@ -27,21 +30,10 @@ class Settings:
         self.logger = logger
         self.model_name = model_name
         self.chat_id = chat_id
-
-    @property
-    def client(self) -> genai.Client:
-        """Get the genai client."""
-        return self.genai_client
-
-    @property
-    def log(self) -> structlog.BoundLogger:
-        """Get the logger instance."""
-        return self.logger
-
-    @property
-    def model(self) -> str:
-        """Get the model name."""
-        return self.model_name
+        self.timezone = pytz.timezone(tz)
+        self.ha_url = ha_url
+        self.ha_token = ha_token
+        self.ha_weather_entity_id = ha_weather_entity_id
 
     def __repr__(self) -> str:
         """Return string representation of Settings."""
