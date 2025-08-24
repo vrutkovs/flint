@@ -9,5 +9,6 @@ dependencies = [
     "pillow>=11.3.0",
     "python-dotenv>=1.1.1",
     "python-telegram-bot[job-queue]>=22.3",
+    "pytz>=2025.2",
     "structlog>=25.4.0",
 ]

@@ -2,6 +2,7 @@ import os
 import sys
 from typing import Final
 import datetime
+import pytz
 from dotenv import load_dotenv, find_dotenv
 
 import structlog
@@ -82,11 +83,18 @@ if SCHEDULED_AGENDA_TIME:
         sys.exit(1)
 
     hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(':'))
+
+    tz = pytz.timezone(os.getenv('TZ', 'UTC'))
+    schedule_time = datetime.time(hour=hour, minute=minute, tzinfo=tz)
+
     scheduleData = ScheduleData(settings=settings, genai_client=genai_client)
     job_queue.run_daily(
         send_agenda,
-        time=datetime.time(hour=hour, minute=minute),
-        data=scheduleData)
+        time=schedule_time,
+        chat_id=int(CHAT_ID),
+        data=scheduleData,
+    )
+    log.info(f"Scheduled agenda updated at {schedule_time}")
 
 # Start the bot
 try:
