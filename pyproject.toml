@@ -1,0 +1,12 @@
+[project]
+name = "telehelper"
+version = "0.1.0"
+description = "Telegram bot helping you with various tasks"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "google-genai>=1.31.0",
+    "pillow>=11.3.0",
+    "python-telegram-bot>=22.3",
+    "structlog>=25.4.0",
+]
