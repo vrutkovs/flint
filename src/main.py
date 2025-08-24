@@ -1,6 +1,8 @@
 import os
 import sys
 from typing import Final
+import datetime
+from dotenv import load_dotenv, find_dotenv
 
 import structlog
 from telegram.ext import Application, MessageHandler, filters
@@ -8,6 +10,9 @@ from google import genai
 
 from telega.main import Telega
 from telega.settings import Settings
+from plugins.schedule import send_agenda, ScheduleData
+
+load_dotenv(find_dotenv())
 
 # Settings are read from environment variables
 TOKEN: Final = os.getenv('TELEGRAM_TOKEN')
@@ -30,6 +35,8 @@ if not MODEL_NAME:
     print("MODEL_NAME environment variable is required")
     sys.exit(1)
 
+SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
+
 # Configure structured logging
 log = structlog.get_logger()
 log.info('Starting up bot...')
@@ -43,7 +50,7 @@ except Exception as e:
     sys.exit(1)
 
 # Create Settings instance
-settings = Settings(genai_client=genai_client, logger=log, model_name=MODEL_NAME)
+settings = Settings(genai_client=genai_client, logger=log, model_name=MODEL_NAME, chat_id=CHAT_ID)
 log.info('Settings instance created')
 
 # Create Telega instance
@@ -66,6 +73,20 @@ app.add_handler(MessageHandler(filters.PHOTO, telega.handle_photo_message))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, telega.handle_text_message))
 
 log.info('Message handlers registered')
+
+# Create scheduler for periodic tasks
+if SCHEDULED_AGENDA_TIME:
+    job_queue = app.job_queue
+    if not job_queue:
+        log.error('Failed to create job queue')
+        sys.exit(1)
+
+    hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(':'))
+    scheduleData = ScheduleData(settings=settings, genai_client=genai_client)
+    job_queue.run_daily(
+        send_agenda,
+        time=datetime.time(hour=hour, minute=minute),
+        data=scheduleData)
 
 # Start the bot
 try:

@@ -1,9 +1,10 @@
 import io
 
 from PIL import Image
-from google import genai
 
-async def generate_text_for_image(genai_client: genai.Client, file_buffer: io.BytesIO,  model: str, prompt: str = "Describe this image in detail") -> str:
+from telega.settings import Settings
+
+async def generate_text_for_image(settings: Settings, file_buffer: io.BytesIO,  prompt: str = "Describe this image in detail") -> str:
     """
     Generate text description for an image using AI.
 
@@ -20,8 +21,8 @@ async def generate_text_for_image(genai_client: genai.Client, file_buffer: io.By
     # img_buffer.seek(0)
 
     # Use GenAI to generate text
-    response = await genai_client.aio.models.generate_content(
-        model=model,
+    response = await settings.genai_client.aio.models.generate_content(
+        model=settings.model,
         contents=[
             prompt,
             image,

@@ -99,9 +99,8 @@ class Telega:
             # Generate description
             self.settings.logger.info("Generating image description", update_id=update.update_id)
             description = await photo.generate_text_for_image(
-                self.settings.genai_client,
+                self.settings,
                 file_buffer,
-                self.settings.model
             )
 
             self.settings.logger.info(

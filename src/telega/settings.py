@@ -12,6 +12,7 @@ class Settings:
         self,
         genai_client: genai.Client,
         logger: structlog.BoundLogger,
+        chat_id: str,
         model_name: str = "gemini-2.5-flash"
     ):
         """
@@ -25,6 +26,7 @@ class Settings:
         self.genai_client = genai_client
         self.logger = logger
         self.model_name = model_name
+        self.chat_id = chat_id
 
     @property
     def client(self) -> genai.Client:
