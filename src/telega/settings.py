@@ -12,7 +12,7 @@ class Settings:
         self,
         genai_client: genai.Client,
         logger: structlog.BoundLogger,
-        model_name: str = "gemini-1.5-flash"
+        model_name: str = "gemini-2.5-flash"
     ):
         """
         Initialize Settings with required configuration.
