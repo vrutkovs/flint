@@ -3,28 +3,27 @@
 import io
 from typing import Optional
 
-import structlog
+
 from PIL import Image
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from google import genai
+
+from telega.settings import Settings
 
 
 class Telega:
     """Main class for Telegram bot operations with AI integration."""
 
-    def __init__(self, genai_client: genai.Client, logger: structlog.BoundLogger):
+    def __init__(self, settings: Settings):
         """
-        Initialize Telega with AI client and logger.
+        Initialize Telega with settings configuration.
 
         Args:
-            genai_client: Google GenAI client for text generation
-            logger: Structured logger instance
+            settings: Settings object containing genai client, logger, and model name
         """
-        self.genai_client = genai_client
-        self.logger = logger
+        self.settings = settings
 
     async def download_file(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[io.BytesIO]:
         """
@@ -67,7 +66,7 @@ class Telega:
             return file_buffer
 
         except Exception as e:
-            self.logger.error("Failed to download file", error=str(e), update_id=update.update_id)
+            self.settings.logger.error("Failed to download file", error=str(e), update_id=update.update_id)
             return None
 
     async def generate_text_for_image(self, image: Image.Image, prompt: str = "Describe this image in detail") -> str:
@@ -88,8 +87,8 @@ class Telega:
             img_buffer.seek(0)
 
             # Use GenAI to generate text
-            response = await self.genai_client.aio.models.generate_content(
-                model='gemini-1.5-flash',
+            response = await self.settings.genai_client.aio.models.generate_content(
+                model=self.settings.model,
                 contents=[
                     prompt,
                     image,
@@ -101,7 +100,7 @@ class Telega:
             return result.strip()
 
         except Exception as e:
-            self.logger.error("Failed to generate text for image", error=str(e))
+            self.settings.logger.error("Failed to generate text for image", error=str(e))
             return "Sorry, I couldn't analyze this image. Please try again."
 
     async def handle_photo_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -118,10 +117,10 @@ class Telega:
             or not update.effective_chat
             or not update.message.photo
         ):
-            self.logger.debug("Unsupported message type", update_id=update.update_id)
+            self.settings.logger.debug("Unsupported message type", update_id=update.update_id)
             return
 
-        self.logger.info("Processing message", update_id=update.update_id)
+        self.settings.logger.info("Processing message", update_id=update.update_id)
 
         # Download the file
         file_buffer = await self.download_file(update, context)
@@ -136,10 +135,10 @@ class Telega:
             image = Image.open(file_buffer)
 
             # Generate description
-            self.logger.info("Generating image description", update_id=update.update_id)
+            self.settings.logger.info("Generating image description", update_id=update.update_id)
             description = await self.generate_text_for_image(image)
 
-            self.logger.info(
+            self.settings.logger.info(
                 "Generated description",
                 update_id=update.update_id,
                 description=description[:100] + "..." if len(description) > 100 else description
@@ -152,7 +151,7 @@ class Telega:
             )
 
         except Exception as e:
-            self.logger.error("Error processing image", error=str(e), update_id=update.update_id)
+            self.settings.logger.error("Error processing image", error=str(e), update_id=update.update_id)
             await update.message.reply_text(
                 "Sorry, I encountered an error processing your image. Please try again."
             )
@@ -171,18 +170,18 @@ class Telega:
         if not update.message or not update.message.text:
             return
 
-        self.logger.info("Processing text message", update_id=update.update_id)
+        self.settings.logger.info("Processing text message", update_id=update.update_id)
 
         try:
             # Generate response using AI
-            response = await self.genai_client.aio.models.generate_content(
-                model='gemini-1.5-flash',
+            response = await self.settings.genai_client.aio.models.generate_content(
+                model=self.settings.model,
                 contents=[
                     update.message.text,
                 ]
             )
             if not response.text:
-                self.logger.error("Empty response from AI", update_id=update.update_id)
+                self.settings.logger.error("Empty response from AI", update_id=update.update_id)
                 raise ValueError("Empty response from AI")
 
             reply_text = response.text.strip()
@@ -193,7 +192,7 @@ class Telega:
             )
 
         except Exception as e:
-            self.logger.error("Error processing text message", error=str(e), update_id=update.update_id)
+            self.settings.logger.error("Error processing text message", error=str(e), update_id=update.update_id)
             await update.message.reply_text(
                 "Sorry, I couldn't process your message. Please try again."
             )

@@ -7,6 +7,7 @@ from telegram.ext import Application, MessageHandler, filters
 from google import genai
 
 from telega.main import Telega
+from telega.settings import Settings
 
 # Settings are read from environment variables
 TOKEN: Final = os.getenv('TELEGRAM_TOKEN')
@@ -24,6 +25,11 @@ if not API_KEY:
     print("GOOGLE_API_KEY environment variable is required")
     sys.exit(1)
 
+MODEL_NAME = os.environ.get("MODEL_NAME")
+if not MODEL_NAME:
+    print("MODEL_NAME environment variable is required")
+    sys.exit(1)
+
 # Configure structured logging
 log = structlog.get_logger()
 log.info('Starting up bot...')
@@ -36,8 +42,12 @@ except Exception as e:
     log.error('Failed to initialize GenAI client', error=str(e))
     sys.exit(1)
 
+# Create Settings instance
+settings = Settings(genai_client=genai_client, logger=log, model_name=MODEL_NAME)
+log.info('Settings instance created')
+
 # Create Telega instance
-telega = Telega(genai_client=genai_client, logger=log)
+telega = Telega(settings=settings)
 log.info('Telega instance created')
 
 # Create Telegram application
