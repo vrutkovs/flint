@@ -140,7 +140,7 @@ class Telega:
         try:
             # Generate response using AI
             response = await self.settings.genai_client.aio.models.generate_content(
-                model=self.settings.model,
+                model=self.settings.model_name,
                 contents=[
                     update.message.text,
                 ]

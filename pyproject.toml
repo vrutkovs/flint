@@ -7,11 +7,11 @@ requires-python = ">=3.13"
 dependencies = [
     "google-genai>=1.31.0",
     "homeassistant-api>=5.0.0",
+    "mcp>=1.12.4",
     "pillow>=11.3.0",
     "python-dotenv>=1.1.1",
     "python-telegram-bot[job-queue]>=22.3",
     "pytz>=2025.2",
+    "pyyaml>=6.0.0",
     "structlog>=25.4.0",
 ]
-[tool.uv.sources]
-homeassistant-api = { path = "./pypi/homeassistant-api", editable = true }

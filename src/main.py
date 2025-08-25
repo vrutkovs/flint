@@ -50,6 +50,16 @@ if not HA_WEATHER_ENTITY_ID:
     print("HA_WEATHER_ENTITY_ID environment variable is required")
     sys.exit(1)
 
+MCP_CONFIG_PATH = os.environ.get("MCP_CONFIG_PATH")
+if not MCP_CONFIG_PATH:
+    print("MCP_CONFIG_PATH environment variable is required")
+    sys.exit(1)
+
+MCP_CALENDAR_NAME = os.environ.get("MCP_CALENDAR_NAME")
+if not MCP_CALENDAR_NAME:
+    print("MCP_CALENDAR_NAME environment variable is required")
+    sys.exit(1)
+
 SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
 TZ = os.getenv('TZ', 'UTC')
 
@@ -74,7 +84,10 @@ settings = Settings(
     tz=TZ,
     ha_url=HA_URL,
     ha_token=HA_TOKEN,
-    ha_weather_entity_id=HA_WEATHER_ENTITY_ID)
+    ha_weather_entity_id=HA_WEATHER_ENTITY_ID,
+    mcp_config_path=MCP_CONFIG_PATH,
+    mcp_calendar_name=MCP_CALENDAR_NAME,
+)
 log.info('Settings instance created')
 
 # Create Telega instance
@@ -117,12 +130,12 @@ if SCHEDULED_AGENDA_TIME:
     )
     log.info(f"Scheduled agenda updated at {schedule_time}")
 
-    # job_queue.run_once(
-    #     send_agenda,
-    #     when=datetime.datetime.now(settings.timezone),
-    #     chat_id=int(CHAT_ID),
-    #     data=scheduleData,
-    # )
+    job_queue.run_once(
+        send_agenda,
+        when=datetime.datetime.now(settings.timezone),
+        chat_id=int(CHAT_ID),
+        data=scheduleData,
+    )
 
 
 # Start the bot
