@@ -130,14 +130,6 @@ if SCHEDULED_AGENDA_TIME:
     )
     log.info(f"Scheduled agenda updated at {schedule_time}")
 
-    job_queue.run_once(
-        send_agenda,
-        when=datetime.datetime.now(settings.timezone),
-        chat_id=int(CHAT_ID),
-        data=scheduleData,
-    )
-
-
 # Start the bot
 try:
     log.info('Starting bot polling...')
