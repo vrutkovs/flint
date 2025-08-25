@@ -28,6 +28,10 @@ character.
 
 Avoid using markdown formatting. Use extra whitelines and line breaks to enhance readability.
 
+Its important to mention unusual weather conditions. Condense weather data into no more than three sentences.
+
+Condense calendar data into a list, no more than three sentences.
+
 Good morning! Here is your morning briefing.
 
 Weather Update:
