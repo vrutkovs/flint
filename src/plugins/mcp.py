@@ -1,14 +1,12 @@
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 import yaml
-import json
 import os
 from dataclasses import dataclass, field
-from contextlib import asynccontextmanager, AsyncExitStack
 
 from telega.settings import Settings
 
-from google.genai import types as genai_types
+from google.genai import types
 
 from mcp import ClientSession, StdioServerParameters, stdio_client
 
@@ -49,284 +47,34 @@ class MCPConfiguration:
         )
 
 
-def clean_schema(schema: genai_types.Schema):
-    if isinstance(schema, dict):
-        # schema.pop("title", None)
-        schema.pop("$schema", None)
-        if "properties" in schema and isinstance(schema["properties"], dict):
-            for key in schema["properties"]:
-                schema["properties"][key] = clean_schema(schema["properties"][key])
-        schema.pop("additionalProperties", None)
-        schema.pop("additional_properties", None)
-        for k, v in schema.items():
-            v = clean_schema(v)
-    return schema
-
-
 class MCPClient:
-    def __init__(self, name: str, server: StdioServerParameters, logger: structlog.BoundLogger):
+    def __init__(self, name: str, server_params: StdioServerParameters, logger: structlog.BoundLogger):
         self.name = name
-        self.server = server
-        self._client_session = None
-        self._exit_stack = None
+        self.server_params = server_params
         self.logger = logger
-
-    @asynccontextmanager
-    async def initialize(self):
-        """Initialize the client connection using AsyncExitStack"""
-        async with AsyncExitStack() as stack:
-            read, write = await stack.enter_async_context(stdio_client(self.server))
-            mcp_client = await stack.enter_async_context(ClientSession(read, write))
-            await mcp_client.initialize()
-            self._client_session = mcp_client
-            yield mcp_client
-
-    async def call_tool(self, name, arguments):
-        """Call a tool by name with given arguments"""
-        if not self._client_session:
-            raise RuntimeError("Client not initialized")
-        return await self._client_session.call_tool(name=name, arguments=arguments)
-
-    async def list_tools(self):
-        """List available tools"""
-        if not self._client_session:
-            raise RuntimeError("Client not initialized")
-        return await self._client_session.list_tools()
 
     async def get_response(self, settings: Settings, prompt):
         """Get a response from the MCP"""
-        async with self.initialize() as mcp_session:
-            mcp_tools = await mcp_session.list_tools()
-            tools = [
-                genai_types.Tool(
-                    function_declarations=[
-                        genai_types.FunctionDeclaration(
-                            name=tool.name,
-                            description=tool.description,
-                            parameters=clean_schema(tool.inputSchema),
-                        )
-                    ]
+        async with stdio_client(self.server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
+                response = await settings.genai_client.aio.models.generate_content(
+                    model=settings.model_name,
+                    contents=[
+                        prompt,
+                    ],
+                    config=types.GenerateContentConfig(
+                        temperature=0,
+                        tools=[session],
+                    ),
                 )
-                for tool in mcp_tools.tools
-            ]
-            self.logger.info(f"MCP {self.name} available tools: {[t.name for t in mcp_tools.tools]}")
-
-            final_text = []
-            config = genai_types.GenerateContentConfig(
-                temperature=0,
-                tools=tools,
-            )
-            self.logger.info(f"MCP {self.name} starting a new chat")
-            chat_history = []
-            chat = settings.genai_client.chats.create(
-                model=settings.model_name,
-                config=config,
-                history=chat_history
-            )
-            final_text = []
-            messages = []
-            messages.append({"role": "user", "content": prompt})
-
-            try:
-                self.logger.debug(f"MCP {self.name} sending '{prompt}'")
-                response = chat.send_message(prompt)
-                self.logger.info(f"Response: {response}")
-
-                # Process the response
-                final_text, messages = await self._process_gemini_response(
-                    response,
-                    final_text,
-                    messages,
-                    settings.model_name,
-                    config,
-                    settings.genai_client,
-                )
-
-            except Exception as e:
-                self.logger.error(f"Error in Gemini processing: {str(e)}", exc_info=True)
-                final_text.append(f"I encountered an error while processing your request: {str(e)}")
-
-            return "\n".join(final_text), messages
-
-    def _parse_gemini_function_args(self, function_call):
-        """Parse function arguments from Gemini function call."""
-        tool_args = {}
-        try:
-            if hasattr(function_call.args, "items"):
-                for k, v in function_call.args.items():
-                    tool_args[k] = v
-            else:
-                # Fallback if it's a string
-                args_str = str(function_call.args)
-                if args_str.strip():
-                    tool_args = json.loads(args_str)
-        except Exception as e:
-            self.logger.error(f"Failed to parse function args: {e}", exc_info=True)
-        return tool_args
-
-    async def _process_gemini_response(self, response, final_text, messages, model, config, genai_client):
-        """Process the response from Gemini, including any function calls."""
-        if not hasattr(response, "candidates") or not response.candidates:
-            self.logger.warning("No candidates in Gemini response")
-            final_text.append("I couldn't generate a proper response.")
-            return final_text, messages
-
-        candidate = response.candidates[0]
-        if not hasattr(candidate, "content") or not hasattr(candidate.content, "parts"):
-            self.logger.warning("No content or parts in Gemini response")
-            final_text.append("I received an incomplete response.")
-            return final_text, messages
-
-        # Process text and function calls
-        for part in candidate.content.parts:
-            # Process text part
-            if hasattr(part, "text") and part.text:
-                final_text.append(part.text)
-
-            # Process function call part
-            if hasattr(part, "function_call") and part.function_call:
-                function_call = part.function_call
-                tool_name = function_call.name
-
-                # Parse tool arguments
-                tool_args = self._parse_gemini_function_args(function_call)
-
-                # Add function call info to response
-                function_call_text = f"I need to call the {tool_name} function to help with your request."
-                final_text.append(function_call_text)
-
-                # Execute tool call
+                self.logger.debug(f"MCP {self.name} response: {response}")
                 try:
-                    self.logger.debug(f"Calling tool {tool_name} with args {tool_args}...")
-                    # final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
-                    result = await self._client_session.call_tool(tool_name, tool_args)
-                    # final_text.append(f"[tool results: {result}]")
-                    self.logger.debug(f"tool {tool_name} result: {result}")
-
-                    # Create a function response and send to Gemini for follow-up
-                    final_text, messages = await self._handle_tool_result(
-                        tool_name,
-                        function_call,
-                        result,
-                        final_text,
-                        messages,
-                        model,
-                        config,
-                        genai_client
-                    )
+                    return response.candidates[0].content.parts[0].text #pyright: ignore
                 except Exception as e:
-                    error_msg = f"Error executing tool {tool_name}: {str(e)}"
-                    self.logger.error(error_msg, exc_info=True)
-                    final_text.append(error_msg)
-
-        return final_text, messages
-
-    async def _handle_tool_result(self, tool_name, function_call, result, final_text, messages, model, config, genai_client):
-            """Handle the result of a tool call and get follow-up response."""
-            try:
-                # Prepare function response
-                function_response_part = genai_types.Part.from_function_response(
-                    name=tool_name,
-                    response={"result": result.content if hasattr(result, "content") else str(result)},
-                )
-
-                # Prepare contents for follow-up
-                contents = [
-                    genai_types.Content(
-                        role="model",
-                        parts=[genai_types.Part(function_call=function_call)]
-                    )
-                ]
-
-                # Add to messages history
-                messages.append({
-                    "role": "assistant",
-                    "content": function_call.model_dump_json()
-                })
-
-                # Add function response to contents
-                contents.append(
-                    genai_types.Content(
-                        role="user",
-                        parts=[function_response_part]
-                    )
-                )
-
-                # Add to messages history
-                result_content = result.content if hasattr(result, "content") else str(result)
-                messages.append({
-                    "role": "user",
-                    "content": {"result": result_content}
-                })
-
-                # Send function response to get final answer
-                follow_up_response = genai_client.models.generate_content(
-                    model=model,
-                    config=config,
-                    contents=contents,
-                )
-
-                # Extract text from follow-up response
-                if hasattr(follow_up_response, "candidates") and follow_up_response.candidates:
-                    follow_up_candidate = follow_up_response.candidates[0]
-                    if (hasattr(follow_up_candidate, "content") and
-                        hasattr(follow_up_candidate.content, "parts")):
-
-                        follow_up_text = ""
-                        for follow_up_part in follow_up_candidate.content.parts:
-                            if hasattr(follow_up_part, "text"):
-                                follow_up_text += follow_up_part.text
-
-                        if follow_up_text:
-                            final_text.append(follow_up_text)
-                            messages.append({
-                                "role": "assistant",
-                                "content": follow_up_text
-                            })
-                        else:
-                            final_text.append("I received the tool results but couldn't generate a follow-up response.")
-
-                else:
-                    final_text.append("I processed your request but couldn't generate a follow-up response.")
-
-            except Exception as e:
-                self.logger.error(f"Error in follow-up response: {str(e)}", exc_info=True)
-                final_text.append(f"I received the tool results but encountered an error: {str(e)}")
-
-            return final_text, messages
-
-        #     if not response:
-        #         raise ValueError("No response received")
-        #     candidates = response.candidates
-        #     if not candidates:
-        #         raise ValueError("No candidate found")
-        #     content = candidates[0].content
-        #     if not content:
-        #         raise ValueError("No content found")
-        #     parts = content.parts
-        #     if not parts:
-        #         raise ValueError("No parts found")
-        #     if not parts[0].function_call:
-        #         return response.text
-
-        #     function = parts[0].function_call
-        #     self.logger.info(f"Calling {function}")
-        #     if not function:
-        #         raise ValueError("No function found")
-        #     result = await mcp_client.call_tool(
-        #         name=function.name, arguments=function.args
-        #     )
-        #     response_text = None
-        #     for content in result.content:
-        #         if content.type == "text":
-        #             response_text = content
-        #             break
-        #     self.logger.info(f"Result: {response_text}")
-        #     settings.genai_client.aio.chats.create(
-        #         messages=[{"role": "user", "content": response_text}]
-        #     )
-        #     return response_text
-        # return
+                    self.logger.error(f"MCP {self.name} failed to generate a response: {e}")
+                    return None
 
 
 class MCPConfigReader:

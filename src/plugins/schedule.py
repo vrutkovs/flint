@@ -66,22 +66,22 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
     settings.logger.info("Generating agenda")
 
     ha = HomeAssistant(settings.ha_url, settings.ha_token, settings.logger, settings.timezone)
+    mcps = MCPConfigReader(settings)
+    mcps.reload_config()
+
+    weather_data = None
     try:
         weather_data = ha.get_weather_forecast(settings.ha_weather_entity_id)
     except Exception as e:
         settings.logger.error(f"Error fetching weather data: {e}")
-        weather_data = None
-    weather_data = None
 
-    mcps = MCPConfigReader(settings)
-    mcps.reload_config()
     calendar_mcp_config = mcps.get_mcp_configuration(settings.mcp_calendar_name)
     if not calendar_mcp_config:
         settings.logger.error("Calendar MCP configuration not found")
         calendar_data = None
     else:
         server_params = await calendar_mcp_config.get_server_params()
-        calendar_mcp = MCPClient(name=calendar_mcp_config.name, server=server_params, logger=settings.logger)
+        calendar_mcp = MCPClient(name=calendar_mcp_config.name, server_params=server_params, logger=settings.logger)
         if calendar_mcp is None:
             settings.logger.error("Calendar MCP not found")
             calendar_data = None
