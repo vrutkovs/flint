@@ -120,7 +120,7 @@ class Telega:
         except Exception as e:
             self.settings.logger.error("Error processing image", error=str(e), update_id=update.update_id)
             await update.message.reply_text(
-                "Sorry, I encountered an error processing your image. Please try again."
+                f"Sorry, I encountered an error processing your image. See logs for update ID: {update.update_id}"
             )
         finally:
             # Clean up file buffer
@@ -137,15 +137,21 @@ class Telega:
         if not update.message:
             return
 
-        self.settings.logger.info("Listing MCPs", update_id=update.update_id)
+        try:
+            self.settings.logger.info("Listing MCPs", update_id=update.update_id)
 
-        # Get list of enabled MCPs
-        mcps = self.mcps.get_enabled_mcps()
+            # Get list of enabled MCPs
+            mcps = self.mcps.get_enabled_mcps()
 
-        # Reply with list of enabled MCPs
-        await update.message.reply_text(
-            f"Here are the MCPs I have enabled:\n{"\n".join(mcps)}",
-        )
+            # Reply with list of enabled MCPs
+            await update.message.reply_text(
+                f"Here are the MCPs I have enabled:\n{"\n".join(mcps)}",
+            )
+        except Exception as e:
+            self.settings.logger.error("Error listing MCPs", error=str(e), update_id=update.update_id)
+            await update.message.reply_text(
+                f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}"
+            )
 
     async def handle_mcp_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -187,9 +193,9 @@ class Telega:
             )
 
         except Exception as e:
-            self.settings.logger.error("Error processing file", error=str(e), update_id=update.update_id)
+            self.settings.logger.error("Error processing command", error=str(e), update_id=update.update_id)
             await update.message.reply_text(
-                "Sorry, I encountered an error processing your file. Please try again."
+                f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}"
             )
 
     async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -224,7 +230,7 @@ class Telega:
             )
 
         except Exception as e:
-            self.settings.logger.error("Error processing text message", error=str(e), update_id=update.update_id)
+            self.settings.logger.error("Error processing message", error=str(e), update_id=update.update_id)
             await update.message.reply_text(
-                "Sorry, I couldn't process your message. Please try again."
+                f"Sorry, I couldn't process your message. See logs for update ID: {update.update_id}"
             )
