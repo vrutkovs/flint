@@ -1,4 +1,4 @@
-# TeleHelper
+# Flint
 
 A powerful Telegram bot that integrates with Google Gemini AI, Home Assistant, and MCP (Model Control Protocol) servers to provide intelligent assistance and home automation capabilities.
 
@@ -43,8 +43,8 @@ A powerful Telegram bot that integrates with Google Gemini AI, Home Assistant, a
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/vrutkovs/telehelper.git
-cd telehelper
+git clone https://github.com/vrutkovs/flint.git
+cd flint
 ```
 
 2. Install dependencies using uv:
@@ -61,7 +61,7 @@ python src/main.py
 
 ## Configuration
 
-TeleHelper uses environment variables for configuration. Create a `.env` file in the project root with the following variables:
+Flint uses environment variables for configuration. Create a `.env` file in the project root with the following variables:
 
 ### Required Configuration
 
@@ -186,7 +186,7 @@ If `SCHEDULED_AGENDA_TIME` is configured, the bot will automatically send a dail
 
 ### Project Structure
 ```
-telehelper/
+flint/
 ├── src/
 │   ├── main.py              # Application entry point
 │   ├── telega/

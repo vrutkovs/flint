@@ -90,7 +90,7 @@ class MCPConfigReader:
         Initialize the MCP configuration reader.
 
         Args:
-            settings: TeleHelper settings instance
+            settings: Flint settings instance
         """
         self.logger = settings.logger
         self.config_path = Path(settings.mcp_config_path)

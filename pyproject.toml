@@ -1,5 +1,5 @@
 [project]
-name = "telehelper"
+name = "flint"
 version = "0.1.0"
 description = "Telegram bot helping you with various tasks"
 readme = "README.md"

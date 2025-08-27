@@ -66,7 +66,7 @@ USER_FILTER = os.environ.get("USER_FILTER", "").split(',')
 
 # Configure structured logging
 log = structlog.get_logger()
-log.info('Starting up bot...')
+log.info('Starting up Flint...')
 
 # Initialize Google's Gemini client for text generation
 try:
