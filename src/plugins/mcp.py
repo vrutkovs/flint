@@ -78,8 +78,8 @@ class MCPClient:
                 self.logger.debug(f"MCP {self.name} response: {response}")
                 try:
                     return (
-                        response.candidates[0].content.parts[0].text
-                    )  # pyright: ignore
+                        response.candidates[0].content.parts[0].text.strip() # pyright: ignore
+                    )
                 except Exception as e:
                     self.logger.error(
                         f"MCP {self.name} failed to generate a response: {e}"

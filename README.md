@@ -1,6 +1,6 @@
 # 🔥 Flint
 
-A sophisticated Telegram bot that seamlessly integrates AI capabilities, smart home automation, and extensible protocol servers to create your personal digital assistant.
+A sophisticated Telegram bot that seamlessly integrates AI capabilities and extensible protocol servers to create your personal digital assistant.
 
 ![Python](https://img.shields.io/badge/python-3.13%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
@@ -14,7 +14,7 @@ Flint transforms your Telegram experience into a powerful command center, bringi
 - **Extensible functionality** with Model Control Protocol (MCP) servers
 - **Intelligent automation** with scheduled tasks and contextual responses
 
-Whether you're analyzing images, controlling your smart home, managing your calendar, or just chatting with AI, Flint handles it all through a simple Telegram interface.
+Whether you're analyzing images, checking the weather, managing your calendar, or just chatting with AI, Flint handles it all through a simple Telegram interface.
 
 ## 🚀 Key Features
 
@@ -23,21 +23,19 @@ Whether you're analyzing images, controlling your smart home, managing your cale
 - **Conversational AI**: Natural language interactions with Google Gemini
 - **Context-Aware Responses**: Smart replies based on conversation history
 - **Multi-Modal Support**: Process text, images, and structured data
-
-### 🏠 Smart Home Control
-- **Weather Updates**: Real-time weather information from your HA weather entities
+- **Customizable Personality**: Configure system instructions for unique response styles
 
 ### 🔌 Extensible Architecture (MCP)
 - **Dynamic Plugin System**: Add new capabilities through MCP servers
 - **Command Auto-Registration**: Each MCP server becomes a Telegram command
-- **Popular Integrations**: GitHub, Calendar, Filesystem, and more
+- **Popular Integrations**: GitHub, Calendar, Weather, Filesystem, and more
 - **Custom Protocols**: Build your own MCP servers for specialized needs
 
 ### 📅 Automation & Scheduling
-- **Daily Briefings**: Customizable morning agenda with personality
+- **Daily Briefings**: Customizable morning agenda with weather and calendar events
 - **Smart Scheduling**: Timezone-aware task automation
-- **Calendar Integration**: Sync with your calendar services
-- **Event Reminders**: Never miss important appointments
+- **Calendar Integration**: Sync with your calendar services via MCP
+- **Weather Updates**: Real-time weather information via MCP servers
 
 ### 🔐 Security First
 - **User Allowlisting**: Restrict access to authorized users only
@@ -52,8 +50,7 @@ Whether you're analyzing images, controlling your smart home, managing your cale
 - **Python 3.13+** (required for latest features)
 - **Telegram Bot Token** from [@BotFather](https://t.me/botfather)
 - **Google Gemini API Key** from [Google AI Studio](https://makersuite.google.com/app/apikey)
-- **Home Assistant** instance with long-lived access token (optional)
-- **MCP Servers** for extended functionality (optional)
+- **MCP Servers** for extended functionality (required)
 
 ### Quick Start
 
@@ -90,19 +87,16 @@ TELEGRAM_CHAT_ID=-1001234567890
 GOOGLE_API_KEY=your_gemini_api_key
 MODEL_NAME=gemini-2.0-flash-exp
 
-# Home Assistant (Required for weather updates in agenda updates)
-HA_URL=http://homeassistant.local:8123
-HA_TOKEN=your_long_lived_access_token
-HA_WEATHER_ENTITY_ID=weather.home
-
-# MCP Configuration (Required for MCP features)
+# MCP Configuration (Required)
 MCP_CONFIG_PATH=/path/to/mcp_config.yaml
 SUMMARY_MCP_CALENDAR_NAME=calendar
+SUMMARY_MCP_WEATHER_NAME=weather
 
 # Optional Features
 SCHEDULED_AGENDA_TIME=07:30
 TZ=America/New_York
 USER_FILTER=allowed_user1,allowed_user2
+SYSTEM_INSTRUCTIONS="Custom personality instructions for the bot"
 ```
 
 #### 4. Launch Flint
@@ -123,11 +117,9 @@ python src/main.py
 | `TELEGRAM_CHAT_ID` | Target chat/group ID | `-1001234567890` |
 | `GOOGLE_API_KEY` | Google AI API key | `AIzaSyA...` |
 | `MODEL_NAME` | Gemini model variant | `gemini-2.0-flash-exp` |
-| `HA_URL` | Home Assistant URL | `http://192.168.1.100:8123` |
-| `HA_TOKEN` | HA access token | `eyJ0eXAi...` |
-| `HA_WEATHER_ENTITY_ID` | Weather entity | `weather.home` |
-| `MCP_CONFIG_PATH` | MCP config file | `/home/user/.config/flint/mcp.yaml` |
-| `SUMMARY_MCP_CALENDAR_NAME` | Calendar MCP name | `calendar` |
+| `MCP_CONFIG_PATH` | MCP config file path | `/home/user/.config/flint/mcp.yaml` |
+| `SUMMARY_MCP_CALENDAR_NAME` | Calendar MCP server name | `calendar` |
+| `SUMMARY_MCP_WEATHER_NAME` | Weather MCP server name | `weather` |
 
 #### Optional Settings
 
@@ -135,7 +127,16 @@ python src/main.py
 |----------|-------------|---------|---------|
 | `SCHEDULED_AGENDA_TIME` | Daily briefing time | None | `07:30` |
 | `TZ` | Timezone | `UTC` | `Europe/London` |
-| `USER_FILTER` | Allowed usernames | None | `alice,bob` |
+| `USER_FILTER` | Allowed usernames (comma-separated) | None | `alice,bob` |
+| `SYSTEM_INSTRUCTIONS` | Custom AI personality | Film noir detective | See below |
+
+#### Default System Instructions
+
+The bot defaults to a film noir detective persona. You can customize this via the `SYSTEM_INSTRUCTIONS` environment variable:
+
+```env
+SYSTEM_INSTRUCTIONS="You are a helpful assistant. Adopt the following persona for your response: The city's a cold, hard place. You're a world-weary film noir detective called Fenton 'Flint' Foster. Deliver the facts, straight, no chaser."
+```
 
 ### MCP Server Configuration
 
@@ -143,6 +144,16 @@ Configure MCP servers in a YAML file specified by `MCP_CONFIG_PATH`:
 
 ```yaml
 mcps:
+  # Weather Integration
+  weather:
+    type: stdio
+    enabled: true
+    config:
+      cmd: /usr/local/bin/weather-mcp
+      args: ["--location", "New York"]
+      env_keys:
+        - WEATHER_API_KEY
+
   # Calendar Integration
   calendar:
     type: stdio
@@ -199,10 +210,12 @@ Bot: "I can see a sunset over the ocean with vibrant orange and purple hues..."
 ```
 
 #### 🔧 MCP Commands
+Each configured MCP server automatically becomes a command:
 ```
-/calendar show events tomorrow
-/github list my pull requests
-/filesystem read /path/to/file.txt
+/weather What's the forecast for tomorrow?
+/calendar Show events for next week
+/github List my pull requests
+/filesystem Read /path/to/file.txt
 ```
 
 #### 📋 List Available Commands
@@ -213,7 +226,7 @@ Bot: "I can see a sunset over the ocean with vibrant orange and purple hues..."
 ### Advanced Features
 
 #### Daily Agenda
-Configure `SCHEDULED_AGENDA_TIME` to receive a personalized daily briefing:
+Configure `SCHEDULED_AGENDA_TIME` to receive a personalized daily briefing with weather and calendar information:
 ```
 🕵️ Morning Report - Tuesday, March 5, 2024
 
@@ -239,7 +252,6 @@ flint/
 │   │   ├── main.py            # Core bot logic
 │   │   └── settings.py        # Configuration management
 │   └── plugins/
-│       ├── homeassistant.py  # HA integration
 │       ├── mcp.py            # MCP server management
 │       ├── photo.py          # Image processing
 │       └── schedule.py       # Task scheduling
@@ -254,11 +266,11 @@ flint/
 
 - **Core Framework**: `python-telegram-bot` for Telegram integration
 - **AI Engine**: `google-genai` for Gemini AI capabilities
-- **Smart Home**: `homeassistant-api` for HA communication
 - **Protocol Support**: `mcp` for Model Control Protocol
 - **Image Processing**: `pillow` for image manipulation
 - **Logging**: `structlog` for structured logging
 - **Configuration**: `python-dotenv` for environment management
+- **Timezone Support**: `pytz` for timezone handling
 
 ## 🛠️ Development
 
@@ -321,6 +333,7 @@ if __name__ == "__main__":
 2. Check MCP server installation: `which your-mcp-server`
 3. Review logs for initialization errors
 4. Ensure required environment variables are set
+5. Verify both `SUMMARY_MCP_CALENDAR_NAME` and `SUMMARY_MCP_WEATHER_NAME` match server names in your MCP config
 
 </details>
 
@@ -329,8 +342,9 @@ if __name__ == "__main__":
 
 1. Verify time format: `HH:MM` (24-hour)
 2. Check timezone setting matches your location
-3. Ensure calendar MCP is properly configured
-4. Review logs at the scheduled time
+3. Ensure both calendar and weather MCP servers are properly configured
+4. Verify `SUMMARY_MCP_CALENDAR_NAME` and `SUMMARY_MCP_WEATHER_NAME` are set
+5. Review logs at the scheduled time
 
 </details>
 
@@ -377,7 +391,6 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) for the excellent Telegram API wrapper
 - [Google Gemini](https://deepmind.google/technologies/gemini/) for powerful AI capabilities
-- [Home Assistant](https://www.home-assistant.io/) for the amazing home automation platform
 - [Model Control Protocol](https://github.com/modelcontextprotocol) for the extensible server architecture
 
 ## 📮 Support

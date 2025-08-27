@@ -50,21 +50,6 @@ if not MODEL_NAME:
     print("MODEL_NAME environment variable is required")
     sys.exit(1)
 
-HA_URL = os.environ.get("HA_URL")
-if not HA_URL:
-    print("HA_URL environment variable is required")
-    sys.exit(1)
-
-HA_TOKEN = os.environ.get("HA_TOKEN")
-if not HA_TOKEN:
-    print("HA_TOKEN environment variable is required")
-    sys.exit(1)
-
-HA_WEATHER_ENTITY_ID = os.environ.get("HA_WEATHER_ENTITY_ID")
-if not HA_WEATHER_ENTITY_ID:
-    print("HA_WEATHER_ENTITY_ID environment variable is required")
-    sys.exit(1)
-
 MCP_CONFIG_PATH = os.environ.get("MCP_CONFIG_PATH")
 if not MCP_CONFIG_PATH:
     print("MCP_CONFIG_PATH environment variable is required")
@@ -73,6 +58,11 @@ if not MCP_CONFIG_PATH:
 SUMMARY_MCP_CALENDAR_NAME = os.environ.get("SUMMARY_MCP_CALENDAR_NAME")
 if not SUMMARY_MCP_CALENDAR_NAME:
     print("SUMMARY_MCP_CALENDAR_NAME environment variable is required")
+    sys.exit(1)
+
+SUMMARY_MCP_WEATHER_NAME = os.environ.get("SUMMARY_MCP_WEATHER_NAME")
+if not SUMMARY_MCP_WEATHER_NAME:
+    print("SUMMARY_MCP_WEATHER_NAME environment variable is required")
     sys.exit(1)
 
 SYSTEM_INSTRUCTIONS = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
@@ -100,11 +90,9 @@ settings = Settings(
     model_name=MODEL_NAME,
     chat_id=CHAT_ID,
     tz=TZ,
-    ha_url=HA_URL,
-    ha_token=HA_TOKEN,
-    ha_weather_entity_id=HA_WEATHER_ENTITY_ID,
     mcp_config_path=MCP_CONFIG_PATH,
     summary_mcp_calendar_name=SUMMARY_MCP_CALENDAR_NAME,
+    summary_mcp_weather_name=SUMMARY_MCP_WEATHER_NAME,
     user_filter=USER_FILTER,
     system_instructions=SYSTEM_INSTRUCTIONS,
 )

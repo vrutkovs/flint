@@ -3,7 +3,6 @@ from telegram.ext import ContextTypes
 
 import structlog
 
-from plugins.homeassistant import HomeAssistant
 from plugins.mcp import MCPConfigReader, MCPClient
 
 
@@ -48,6 +47,7 @@ acknowledge it cheerfully or omit it gracefully.
 """
 
 CALENDAR_MCP_PROMPT = "List upcoming calendar events today in my primary calendar in Europe/Prague timezone?"
+WEATHER_MCP_PROMPT = "What is the weather like in Brno today?"
 
 
 async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
@@ -72,17 +72,28 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
 
     settings.logger.info("Generating agenda")
 
-    ha = HomeAssistant(
-        settings.ha_url, settings.ha_token, settings.logger, settings.timezone
-    )
     mcps = MCPConfigReader(settings)
     mcps.reload_config()
 
-    weather_data = None
-    try:
-        weather_data = ha.get_weather_forecast(settings.ha_weather_entity_id)
-    except Exception as e:
-        settings.logger.error(f"Error fetching weather data: {e}")
+    weather_mcp_config = mcps.get_mcp_configuration(settings.summary_mcp_weather_name)
+    if not weather_mcp_config:
+        settings.logger.error("Weather MCP configuration not found")
+        weather_data = None
+    else:
+        server_params = await weather_mcp_config.get_server_params()
+        weather_mcp = MCPClient(
+            name=weather_mcp_config.name,
+            server_params=server_params,
+            logger=settings.logger,
+        )
+        if weather_mcp is None:
+            settings.logger.error("Weather MCP not found")
+            weather_data = None
+        else:
+            weather_data = await weather_mcp.get_response(
+                settings=settings, prompt=WEATHER_MCP_PROMPT
+            )
+    settings.logger.info(f"Weather data fetched: {weather_data}")
 
     calendar_mcp_config = mcps.get_mcp_configuration(settings.SUMMARY_MCP_CALENDAR_NAME)
     if not calendar_mcp_config:
