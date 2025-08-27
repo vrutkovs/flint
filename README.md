@@ -6,13 +6,11 @@ A sophisticated Telegram bot that seamlessly integrates AI capabilities, smart h
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
 ![Telegram Bot API](https://img.shields.io/badge/Telegram%20Bot%20API-supported-blue)
 ![Google Gemini](https://img.shields.io/badge/Google%20Gemini-integrated-red)
-![Home Assistant](https://img.shields.io/badge/Home%20Assistant-compatible-blue)
 
 ## ✨ Overview
 
 Flint transforms your Telegram experience into a powerful command center, bringing together:
 - **Advanced AI capabilities** through Google Gemini
-- **Smart home control** via Home Assistant
 - **Extensible functionality** with Model Control Protocol (MCP) servers
 - **Intelligent automation** with scheduled tasks and contextual responses
 
@@ -27,10 +25,7 @@ Whether you're analyzing images, controlling your smart home, managing your cale
 - **Multi-Modal Support**: Process text, images, and structured data
 
 ### 🏠 Smart Home Control
-- **Home Assistant Integration**: Full control over your smart home devices
 - **Weather Updates**: Real-time weather information from your HA weather entities
-- **Device Management**: Control lights, switches, sensors, and more
-- **State Monitoring**: Track device states and sensor readings
 
 ### 🔌 Extensible Architecture (MCP)
 - **Dynamic Plugin System**: Add new capabilities through MCP servers
@@ -95,7 +90,7 @@ TELEGRAM_CHAT_ID=-1001234567890
 GOOGLE_API_KEY=your_gemini_api_key
 MODEL_NAME=gemini-2.0-flash-exp
 
-# Home Assistant (Required for HA features)
+# Home Assistant (Required for weather updates in agenda updates)
 HA_URL=http://homeassistant.local:8123
 HA_TOKEN=your_long_lived_access_token
 HA_WEATHER_ENTITY_ID=weather.home
@@ -231,13 +226,6 @@ Your dance card for today:
 • 5:30 PM - Gym session
 
 Another day in the city that never sleeps...
-```
-
-#### Smart Home Control
-Interact with Home Assistant entities:
-```
-/homeassistant turn on living_room_lights
-/homeassistant set thermostat to 22
 ```
 
 ## 🏗️ Architecture
