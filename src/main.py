@@ -67,6 +67,10 @@ if not SUMMARY_MCP_WEATHER_NAME:
 
 SYSTEM_INSTRUCTIONS = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
+RAG_EMBEDDING_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
+RAG_LOCATION = os.environ.get("RAG_LOCATION")
+RAG_GOOGLE_PROJECT_ID = os.environ.get("RAG_GOOGLE_PROJECT_ID")
+
 SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
 TZ = os.getenv("TZ", "UTC")
 USER_FILTER = os.environ.get("USER_FILTER", "").split(",")
@@ -95,6 +99,9 @@ settings = Settings(
     summary_mcp_weather_name=SUMMARY_MCP_WEATHER_NAME,
     user_filter=USER_FILTER,
     system_instructions=SYSTEM_INSTRUCTIONS,
+    rag_embedding_model=RAG_EMBEDDING_MODEL,
+    rag_location=RAG_LOCATION,
+    rag_google_project_id=RAG_GOOGLE_PROJECT_ID,
 )
 log.info("Settings instance created")
 

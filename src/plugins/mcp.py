@@ -64,7 +64,12 @@ class MCPClient:
                 await session.initialize()
 
                 genconfig = settings.genconfig.copy()
-                genconfig.tools = [session]
+                if not genconfig.tools:
+                    tools = []
+                else:
+                    tools = genconfig.tools
+                tools.append(session)
+                genconfig.tools = tools
                 genconfig.temperature = 0
 
                 self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
@@ -78,7 +83,9 @@ class MCPClient:
                 self.logger.debug(f"MCP {self.name} response: {response}")
                 try:
                     return (
-                        response.candidates[0].content.parts[0].text.strip() # pyright: ignore
+                        response.candidates[0]
+                        .content.parts[0]
+                        .text.strip()  # pyright: ignore
                     )
                 except Exception as e:
                     self.logger.error(

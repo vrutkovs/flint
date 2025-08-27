@@ -5,13 +5,13 @@ description = "Telegram bot helping you with various tasks"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "google-cloud-aiplatform>=1.111.0",
     "google-genai>=1.31.0",
-    "homeassistant-api>=5.0.0",
-    "mcp>=1.12.4",
+    "mcp>=1.13.1",
     "pillow>=11.3.0",
     "python-dotenv>=1.1.1",
     "python-telegram-bot[job-queue]>=22.3",
     "pytz>=2025.2",
-    "pyyaml>=6.0.0",
+    "pyyaml>=6.0.2",
     "structlog>=25.4.0",
 ]

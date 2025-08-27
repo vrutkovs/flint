@@ -70,7 +70,9 @@ class Telega:
 
         except Exception:
             err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
-            self.settings.logger.error("Failed to download file", error=err, update_id=update.update_id)
+            self.settings.logger.error(
+                "Failed to download file", error=err, update_id=update.update_id
+            )
             return None
 
     async def is_user_allowed(self, update: Update):
@@ -174,7 +176,9 @@ class Telega:
 
         except Exception:
             err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
-            self.settings.logger.error("Error processing image", error=err, update_id=update.update_id)
+            self.settings.logger.error(
+                "Error processing image", error=err, update_id=update.update_id
+            )
             await self.reply_to_message(
                 update,
                 f"Sorry, I encountered an error processing your image. See logs for update ID: {update.update_id}",
@@ -213,7 +217,9 @@ class Telega:
             )
         except Exception:
             err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
-            self.settings.logger.error("Error listing MCPs", error=err, update_id=update.update_id)
+            self.settings.logger.error(
+                "Error listing MCPs", error=err, update_id=update.update_id
+            )
             await self.reply_to_message(
                 update,
                 f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}",
@@ -274,7 +280,9 @@ class Telega:
 
         except Exception:
             err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
-            self.settings.logger.error("Error processing command", error=err, update=update.update_id)
+            self.settings.logger.error(
+                "Error processing command", error=err, update=update.update_id
+            )
             await self.reply_to_message(
                 update,
                 f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}",
@@ -320,7 +328,9 @@ class Telega:
                 "Error processing message", error=str(e), update_id=update.update_id
             )
             err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
-            self.settings.logger.error("Error processing message", error=err, update_id=update.update_id)
+            self.settings.logger.error(
+                "Error processing message", error=err, update_id=update.update_id
+            )
             await self.reply_to_message(
                 update,
                 f"Sorry, I couldn't process your message. See logs for update ID: {update.update_id}",

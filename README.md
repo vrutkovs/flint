@@ -50,7 +50,8 @@ Whether you're analyzing images, checking the weather, managing your calendar, o
 - **Python 3.13+** (required for latest features)
 - **Telegram Bot Token** from [@BotFather](https://t.me/botfather)
 - **Google Gemini API Key** from [Google AI Studio](https://makersuite.google.com/app/apikey)
-- **MCP Servers** for extended functionality (required)
+- **MCP Servers** for extended functionality (required - at minimum weather and calendar for daily briefings)
+- **Node.js** (optional, for npx-based MCP servers)
 
 ### Quick Start
 
@@ -78,7 +79,7 @@ pip install -e .
 
 #### 3. Configure Environment
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (see `.env.example` for a complete template):
 
 ```env
 # Core Configuration (Required)
@@ -97,6 +98,12 @@ SCHEDULED_AGENDA_TIME=07:30
 TZ=America/New_York
 USER_FILTER=allowed_user1,allowed_user2
 SYSTEM_INSTRUCTIONS="Custom personality instructions for the bot"
+```
+
+💡 **Tip**: Copy `.env.example` to `.env` and fill in your values:
+```bash
+cp .env.example .env
+# Edit .env with your favorite editor
 ```
 
 #### 4. Launch Flint
@@ -140,29 +147,29 @@ SYSTEM_INSTRUCTIONS="You are a helpful assistant. Adopt the following persona fo
 
 ### MCP Server Configuration
 
-Configure MCP servers in a YAML file specified by `MCP_CONFIG_PATH`:
+Configure MCP servers in a YAML file specified by `MCP_CONFIG_PATH`. See `mcp_config.yaml.example` for a complete template with many server examples:
 
 ```yaml
 mcps:
-  # Weather Integration
+  # Weather Integration (Required for daily briefings)
   weather:
     type: stdio
     enabled: true
     config:
-      cmd: /usr/local/bin/weather-mcp
-      args: ["--location", "New York"]
-      env_keys:
-        - WEATHER_API_KEY
+      cmd: npx
+      args: ["-y", "@modelcontextprotocol/server-weather"]
+      envs:
+        OPENWEATHER_API_KEY: ${WEATHER_API_KEY}
 
-  # Calendar Integration
+  # Calendar Integration (Required for daily briefings)
   calendar:
     type: stdio
     enabled: true
     config:
-      cmd: /usr/local/bin/calendar-mcp
-      args: ["--format", "json"]
-      env_keys:
-        - GOOGLE_CALENDAR_API_KEY
+      cmd: npx
+      args: ["-y", "@modelcontextprotocol/server-google-calendar"]
+      envs:
+        GOOGLE_CALENDAR_CREDENTIALS: ${GOOGLE_CALENDAR_API_KEY}
 
   # GitHub Integration
   github:
@@ -174,23 +181,13 @@ mcps:
       envs:
         GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
 
-  # Filesystem Access (disabled by default for security)
-  filesystem:
-    type: stdio
-    enabled: false
-    config:
-      cmd: /usr/local/bin/filesystem-mcp
-      args: ["--read-only", "--path", "/safe/directory"]
+  # More servers available in mcp_config.yaml.example
+```
 
-  # Custom MCP Server
-  custom:
-    type: stdio
-    enabled: true
-    config:
-      cmd: python
-      args: ["/path/to/custom_mcp.py"]
-      envs:
-        API_KEY: ${CUSTOM_API_KEY}
+💡 **Quick Setup**: 
+```bash
+cp mcp_config.yaml.example mcp_config.yaml
+# Edit mcp_config.yaml to enable/configure servers you need
 ```
 
 ## 📱 Usage
@@ -256,7 +253,8 @@ flint/
 │       ├── photo.py          # Image processing
 │       └── schedule.py       # Task scheduling
 ├── tests/                     # Test suite
-├── .env.example              # Environment template
+├── .env.example              # Environment variables template
+├── mcp_config.yaml.example   # MCP servers configuration template
 ├── pyproject.toml            # Dependencies
 ├── LICENSE                   # Apache 2.0
 └── README.md                 # Documentation
@@ -311,6 +309,15 @@ if __name__ == "__main__":
     server = CustomMCPServer()
     server.run()
 ```
+
+For more MCP server examples, check the `mcp_config.yaml.example` file which includes configurations for:
+- Weather providers
+- Calendar services
+- GitHub integration
+- Database connections
+- Slack integration
+- Web search
+- And more!
 
 ## 🐛 Troubleshooting
 
