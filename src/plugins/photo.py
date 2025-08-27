@@ -6,7 +6,10 @@ from telega.settings import Settings
 
 PROMPT = "Describe this image in one sentence. If the picture contains text, include it in the description as is."
 
-async def generate_text_for_image(settings: Settings, file_buffer: io.BytesIO,  prompt: str = PROMPT) -> str:
+
+async def generate_text_for_image(
+    settings: Settings, file_buffer: io.BytesIO, prompt: str = PROMPT
+) -> str:
     """
     Generate text description for an image using AI.
 
@@ -26,7 +29,7 @@ async def generate_text_for_image(settings: Settings, file_buffer: io.BytesIO,  
             prompt,
             image,
         ],
-        config=settings.genconfig
+        config=settings.genconfig,
     )
     result = response.text
     if result is None:

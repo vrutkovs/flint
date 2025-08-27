@@ -4,12 +4,14 @@ from telegram.ext import ContextTypes
 import structlog
 
 from plugins.homeassistant import HomeAssistant
-from plugins.mcp import MCPConfigReader,MCPClient
+from plugins.mcp import MCPConfigReader, MCPClient
+
 
 class ScheduleData:
     def __init__(self, settings: Settings, genai_client):
         self.settings = settings
         self.genai_client = genai_client
+
 
 PROMPT_TEMPLATE = """
 You are a helpful digital assistant.
@@ -47,6 +49,7 @@ acknowledge it cheerfully or omit it gracefully.
 
 CALENDAR_MCP_PROMPT = "List upcoming calendar events today in my primary calendar in Europe/Prague timezone?"
 
+
 async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
     log = structlog.get_logger()
     log.info("Sending agenda")
@@ -69,7 +72,9 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
 
     settings.logger.info("Generating agenda")
 
-    ha = HomeAssistant(settings.ha_url, settings.ha_token, settings.logger, settings.timezone)
+    ha = HomeAssistant(
+        settings.ha_url, settings.ha_token, settings.logger, settings.timezone
+    )
     mcps = MCPConfigReader(settings)
     mcps.reload_config()
 
@@ -85,15 +90,23 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
         calendar_data = None
     else:
         server_params = await calendar_mcp_config.get_server_params()
-        calendar_mcp = MCPClient(name=calendar_mcp_config.name, server_params=server_params, logger=settings.logger)
+        calendar_mcp = MCPClient(
+            name=calendar_mcp_config.name,
+            server_params=server_params,
+            logger=settings.logger,
+        )
         if calendar_mcp is None:
             settings.logger.error("Calendar MCP not found")
             calendar_data = None
         else:
-            calendar_data = await calendar_mcp.get_response(settings=settings, prompt=CALENDAR_MCP_PROMPT)
+            calendar_data = await calendar_mcp.get_response(
+                settings=settings, prompt=CALENDAR_MCP_PROMPT
+            )
     settings.logger.info(f"Calendar data fetched: {calendar_data}")
 
-    prompt = PROMPT_TEMPLATE.format(weather_data=weather_data, calendar_data=calendar_data)
+    prompt = PROMPT_TEMPLATE.format(
+        weather_data=weather_data, calendar_data=calendar_data
+    )
     settings.logger.info(f"Prompt sent:\n{prompt}")
 
     response = await genai_client.aio.models.generate_content(
@@ -107,7 +120,4 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
         raise ValueError("Empty response from AI")
 
     settings.logger.info(f"Agenda sent:\n{text}")
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=text,
-        parse_mode="Markdown")
+    await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")

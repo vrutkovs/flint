@@ -1,4 +1,5 @@
 """Settings module for Telega bot configuration."""
+
 import pytz
 import structlog
 from google import genai
@@ -20,7 +21,7 @@ class Settings:
         summary_mcp_calendar_name: str,
         system_instructions: str,
         user_filter: list = [],
-        model_name: str = "gemini-2.5-flash"
+        model_name: str = "gemini-2.5-flash",
     ):
         """
         Initialize Settings with required configuration.

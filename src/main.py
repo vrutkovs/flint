@@ -30,12 +30,12 @@ Always translate the response back to the user's language, including tool output
 """
 
 # Settings are read from environment variables
-TOKEN: Final = os.getenv('TELEGRAM_TOKEN')
+TOKEN: Final = os.getenv("TELEGRAM_TOKEN")
 if not TOKEN:
     print("TELEGRAM_TOKEN environment variable is required")
     sys.exit(1)
 
-CHAT_ID: Final = os.getenv('TELEGRAM_CHAT_ID')
+CHAT_ID: Final = os.getenv("TELEGRAM_CHAT_ID")
 if not CHAT_ID:
     print("TELEGRAM_CHAT_ID environment variable is required")
     sys.exit(1)
@@ -78,19 +78,19 @@ if not SUMMARY_MCP_CALENDAR_NAME:
 SYSTEM_INSTRUCTIONS = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
 SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
-TZ = os.getenv('TZ', 'UTC')
-USER_FILTER = os.environ.get("USER_FILTER", "").split(',')
+TZ = os.getenv("TZ", "UTC")
+USER_FILTER = os.environ.get("USER_FILTER", "").split(",")
 
 # Configure structured logging
 log = structlog.get_logger()
-log.info('Starting up Flint...')
+log.info("Starting up Flint...")
 
 # Initialize Google's Gemini client for text generation
 try:
     genai_client = genai.Client(api_key=API_KEY)
-    log.info('GenAI client initialized successfully')
+    log.info("GenAI client initialized successfully")
 except Exception as e:
-    log.error('Failed to initialize GenAI client', error=str(e))
+    log.error("Failed to initialize GenAI client", error=str(e))
     sys.exit(1)
 
 # Create Settings instance
@@ -108,18 +108,18 @@ settings = Settings(
     user_filter=USER_FILTER,
     system_instructions=SYSTEM_INSTRUCTIONS,
 )
-log.info('Settings instance created')
+log.info("Settings instance created")
 
 # Create Telega instance
 telega = Telega(settings=settings)
-log.info('Telega instance created')
+log.info("Telega instance created")
 
 # Create Telegram application
 try:
     app = Application.builder().token(TOKEN).build()
-    log.info('Telegram application created')
+    log.info("Telegram application created")
 except Exception as e:
-    log.error('Failed to create Telegram application', error=str(e))
+    log.error("Failed to create Telegram application", error=str(e))
     sys.exit(1)
 
 # Add handlers for different message types
@@ -130,23 +130,23 @@ app.add_handler(MessageHandler(filters.PHOTO, telega.handle_photo_message))
 telega.mcps.reload_config()
 
 for mcp_name in telega.mcps.get_enabled_mcps():
-    log.info(f'Registering handler for MCP client: {mcp_name}')
+    log.info(f"Registering handler for MCP client: {mcp_name}")
     app.add_handler(CommandHandler(mcp_name, telega.handle_mcp_message))
 
 app.add_handler(CommandHandler("list_mcps", telega.handle_list_mcps_message))
 app.add_handler(CommandHandler("gemini", telega.handle_text_message))
-log.info('Registered handler for Gemini')
+log.info("Registered handler for Gemini")
 
-log.info('Message handlers registered')
+log.info("Message handlers registered")
 
 # Create scheduler for periodic tasks
 if SCHEDULED_AGENDA_TIME:
     job_queue = app.job_queue
     if not job_queue:
-        log.error('Failed to create job queue')
+        log.error("Failed to create job queue")
         sys.exit(1)
 
-    hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(':'))
+    hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(":"))
     schedule_time = datetime.time(hour=hour, minute=minute, tzinfo=settings.timezone)
     scheduleData = ScheduleData(settings=settings, genai_client=genai_client)
 
@@ -160,10 +160,10 @@ if SCHEDULED_AGENDA_TIME:
 
 # Start the bot
 try:
-    log.info('Starting bot polling...')
+    log.info("Starting bot polling...")
     app.run_polling(poll_interval=3, timeout=10)
 except KeyboardInterrupt:
-    log.info('Bot stopped by user')
+    log.info("Bot stopped by user")
 except Exception as e:
-    log.error('Bot encountered an error', error=str(e))
+    log.error("Bot encountered an error", error=str(e))
     sys.exit(1)

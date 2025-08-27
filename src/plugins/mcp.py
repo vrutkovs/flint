@@ -11,9 +11,11 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 
 import structlog
 
+
 @dataclass
 class MCPConfiguration:
     """Configuration for a single MCP (Model Control Protocol) instance."""
+
     name: str
     type: str
     enabled: bool = True
@@ -28,26 +30,29 @@ class MCPConfiguration:
             raise ValueError("MCP type cannot be empty")
 
     async def get_server_params(self):
-        envs = self.config.get('envs', {})
+        envs = self.config.get("envs", {})
         if not envs:
-            env_keys = self.config.get('env_keys', [])
+            env_keys = self.config.get("env_keys", [])
             for key in env_keys:
-                envs[key] = os.environ.get(key, '')
+                envs[key] = os.environ.get(key, "")
 
         # Handle different command field names (cmd for extensions format, command for legacy)
-        command = self.config.get('cmd') or self.config.get('command', '')
+        command = self.config.get("cmd") or self.config.get("command", "")
         if not command:
             raise ValueError(f"No command specified for MCP '{self.name}'")
 
         return StdioServerParameters(
-            command=command,
-            args=self.config.get('args', []),
-            env=envs
+            command=command, args=self.config.get("args", []), env=envs
         )
 
 
 class MCPClient:
-    def __init__(self, name: str, server_params: StdioServerParameters, logger: structlog.BoundLogger):
+    def __init__(
+        self,
+        name: str,
+        server_params: StdioServerParameters,
+        logger: structlog.BoundLogger,
+    ):
         self.name = name
         self.server_params = server_params
         self.logger = logger
@@ -72,9 +77,13 @@ class MCPClient:
                 )
                 self.logger.debug(f"MCP {self.name} response: {response}")
                 try:
-                    return response.candidates[0].content.parts[0].text #pyright: ignore
+                    return (
+                        response.candidates[0].content.parts[0].text
+                    )  # pyright: ignore
                 except Exception as e:
-                    self.logger.error(f"MCP {self.name} failed to generate a response: {e}")
+                    self.logger.error(
+                        f"MCP {self.name} failed to generate a response: {e}"
+                    )
                     return None
 
 
@@ -100,11 +109,13 @@ class MCPConfigReader:
 
     def load_config(self) -> None:
         if not self.config_path.exists():
-            self.logger.warning(f"MCP configuration file not found at {self.config_path}")
+            self.logger.warning(
+                f"MCP configuration file not found at {self.config_path}"
+            )
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
         try:
-            with open(self.config_path, 'r', encoding='utf-8') as file:
+            with open(self.config_path, "r", encoding="utf-8") as file:
                 self._raw_config = yaml.safe_load(file) or {}
 
             self.logger.info(f"Loaded MCP configuration from {self.config_path}")
@@ -121,7 +132,7 @@ class MCPConfigReader:
         """Parse the raw configuration into MCP objects."""
         self.mcps.clear()
 
-        mcp_configs = self._raw_config['extensions']  # Extensions format
+        mcp_configs = self._raw_config["extensions"]  # Extensions format
 
         if not isinstance(mcp_configs, dict):
             raise ValueError("MCP configuration must be a dictionary")
@@ -135,7 +146,9 @@ class MCPConfigReader:
                 self.logger.error(f"Failed to parse MCP '{name}': {e}")
                 raise ValueError(f"Invalid MCP configuration for '{name}': {e}")
 
-    def _create_mcp_configuration(self, name: str, config: Dict[str, Any]) -> MCPConfiguration:
+    def _create_mcp_configuration(
+        self, name: str, config: Dict[str, Any]
+    ) -> MCPConfiguration:
         """
         Create an MCP configuration object from raw config data.
 
@@ -151,46 +164,48 @@ class MCPConfigReader:
             return MCPConfiguration(name=name, type=config)
 
         if not isinstance(config, dict):
-            raise ValueError(f"MCP configuration for '{name}' must be a dictionary or string")
+            raise ValueError(
+                f"MCP configuration for '{name}' must be a dictionary or string"
+            )
 
         # Extract configuration fields
-        mcp_type = config.get('type', config.get('command', ''))
-        enabled = config.get('enabled', True)
-        mcp_config = config.get('config', {})
-        metadata = config.get('metadata', {})
+        mcp_type = config.get("type", config.get("command", ""))
+        enabled = config.get("enabled", True)
+        mcp_config = config.get("config", {})
+        metadata = config.get("metadata", {})
 
         # Handle extensions format
-        if 'cmd' in config:
+        if "cmd" in config:
             # This is the extensions format
             mcp_config = {
-                'cmd': config.get('cmd'),
-                'args': config.get('args', []),
-                'envs': config.get('envs', {}),
-                'env_keys': config.get('env_keys', []),
-                'timeout': config.get('timeout', 300),
-                'bundled': config.get('bundled'),
+                "cmd": config.get("cmd"),
+                "args": config.get("args", []),
+                "envs": config.get("envs", {}),
+                "env_keys": config.get("env_keys", []),
+                "timeout": config.get("timeout", 300),
+                "bundled": config.get("bundled"),
             }
             metadata = {
-                'description': config.get('description', ''),
-                'name': config.get('name', name),
+                "description": config.get("description", ""),
+                "name": config.get("name", name),
             }
         # Handle legacy args format
-        elif 'args' in config and not mcp_config:
-            mcp_config = {'args': config['args']}
+        elif "args" in config and not mcp_config:
+            mcp_config = {"args": config["args"]}
 
         # Handle legacy formats
-        if not mcp_type and 'command' in config:
-            mcp_type = 'command'
-            mcp_config = {'command': config['command']}
-            if 'args' in config:
-                mcp_config['args'] = config['args']
+        if not mcp_type and "command" in config:
+            mcp_type = "command"
+            mcp_config = {"command": config["command"]}
+            if "args" in config:
+                mcp_config["args"] = config["args"]
 
         return MCPConfiguration(
             name=name,
             type=mcp_type,
             enabled=enabled,
             config=mcp_config,
-            metadata=metadata
+            metadata=metadata,
         )
 
     def get_mcp_configuration(self, name: str) -> Optional[MCPConfiguration]:
@@ -257,11 +272,15 @@ class MCPConfigReader:
             if not mcp.name or not mcp.type:
                 raise ValueError(f"MCP '{name}' has invalid configuration")
 
-        self.logger.info(f"Configuration validated successfully. {len(self.mcps)} MCPs loaded.")
+        self.logger.info(
+            f"Configuration validated successfully. {len(self.mcps)} MCPs loaded."
+        )
         return True
 
     def __repr__(self) -> str:
-        return f"MCPConfigReader(config_path='{self.config_path}', mcps={len(self.mcps)})"
+        return (
+            f"MCPConfigReader(config_path='{self.config_path}', mcps={len(self.mcps)})"
+        )
 
     def __len__(self) -> int:
         return len(self.mcps)
