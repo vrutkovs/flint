@@ -55,9 +55,9 @@ if not MCP_CONFIG_PATH:
     print("MCP_CONFIG_PATH environment variable is required")
     sys.exit(1)
 
-MCP_CALENDAR_NAME = os.environ.get("MCP_CALENDAR_NAME")
-if not MCP_CALENDAR_NAME:
-    print("MCP_CALENDAR_NAME environment variable is required")
+SUMMARY_MCP_CALENDAR_NAME = os.environ.get("SUMMARY_MCP_CALENDAR_NAME")
+if not SUMMARY_MCP_CALENDAR_NAME:
+    print("SUMMARY_MCP_CALENDAR_NAME environment variable is required")
     sys.exit(1)
 
 SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
@@ -86,7 +86,7 @@ settings = Settings(
     ha_token=HA_TOKEN,
     ha_weather_entity_id=HA_WEATHER_ENTITY_ID,
     mcp_config_path=MCP_CONFIG_PATH,
-    mcp_calendar_name=MCP_CALENDAR_NAME,
+    summary_mcp_calendar_name=SUMMARY_MCP_CALENDAR_NAME,
 )
 log.info('Settings instance created')
 

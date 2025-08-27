@@ -79,7 +79,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         settings.logger.error(f"Error fetching weather data: {e}")
 
-    calendar_mcp_config = mcps.get_mcp_configuration(settings.mcp_calendar_name)
+    calendar_mcp_config = mcps.get_mcp_configuration(settings.SUMMARY_MCP_CALENDAR_NAME)
     if not calendar_mcp_config:
         settings.logger.error("Calendar MCP configuration not found")
         calendar_data = None
