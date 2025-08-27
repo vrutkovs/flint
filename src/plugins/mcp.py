@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 
 from telega.settings import Settings
 
-from google.genai import types
 
 from mcp import ClientSession, StdioServerParameters, stdio_client
 
@@ -58,16 +57,18 @@ class MCPClient:
         async with stdio_client(self.server_params) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
+
+                genconfig = settings.genconfig.copy()
+                genconfig.tools = [session]
+                genconfig.temperature = 0
+
                 self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
                 response = await settings.genai_client.aio.models.generate_content(
                     model=settings.model_name,
                     contents=[
                         prompt,
                     ],
-                    config=types.GenerateContentConfig(
-                        temperature=0,
-                        tools=[session],
-                    ),
+                    config=genconfig,
                 )
                 self.logger.debug(f"MCP {self.name} response: {response}")
                 try:

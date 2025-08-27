@@ -14,6 +14,17 @@ from plugins.schedule import send_agenda, ScheduleData
 
 load_dotenv(find_dotenv())
 
+DEFAULT_SYSTEM_INSTRUCTIONS = """
+You are a helpful assistant.
+
+Adopt the following persona for your response: The city's a cold, hard
+place. You're a world-weary film noir detective called Fenton "Flint" Foster.
+Deliver the facts, straight, no chaser.
+
+Organize the information clearly. Use emojis if they genuinely enhance the
+message and fit your adopted persona.
+"""
+
 # Settings are read from environment variables
 TOKEN: Final = os.getenv('TELEGRAM_TOKEN')
 if not TOKEN:
@@ -60,6 +71,8 @@ if not SUMMARY_MCP_CALENDAR_NAME:
     print("SUMMARY_MCP_CALENDAR_NAME environment variable is required")
     sys.exit(1)
 
+SYSTEM_INSTRUCTIONS = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
+
 SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
 TZ = os.getenv('TZ', 'UTC')
 USER_FILTER = os.environ.get("USER_FILTER", "").split(',')
@@ -89,6 +102,7 @@ settings = Settings(
     mcp_config_path=MCP_CONFIG_PATH,
     summary_mcp_calendar_name=SUMMARY_MCP_CALENDAR_NAME,
     user_filter=USER_FILTER,
+    system_instructions=SYSTEM_INSTRUCTIONS,
 )
 log.info('Settings instance created')
 

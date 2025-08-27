@@ -25,7 +25,8 @@ async def generate_text_for_image(settings: Settings, file_buffer: io.BytesIO,  
         contents=[
             prompt,
             image,
-        ]
+        ],
+        config=settings.genconfig
     )
     result = response.text
     if result is None:

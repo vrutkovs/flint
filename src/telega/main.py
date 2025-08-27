@@ -264,7 +264,8 @@ class Telega:
                 model=self.settings.model_name,
                 contents=[
                     update.message.text,
-                ]
+                ],
+                config=self.settings.genconfig,
             )
             if not response.text:
                 raise ValueError("Empty response from AI")

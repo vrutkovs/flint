@@ -98,7 +98,8 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
 
     response = await genai_client.aio.models.generate_content(
         model=settings.model_name,
-        contents=[prompt]
+        contents=[prompt],
+        config=settings.genconfig,
     )
     text = response.text
     if not text:
