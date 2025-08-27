@@ -1,272 +1,408 @@
-# Flint
+# 🔥 Flint
 
-A powerful Telegram bot that integrates with Google Gemini AI, Home Assistant, and MCP (Model Control Protocol) servers to provide intelligent assistance and home automation capabilities.
+A sophisticated Telegram bot that seamlessly integrates AI capabilities, smart home automation, and extensible protocol servers to create your personal digital assistant.
 
-## Features
+![Python](https://img.shields.io/badge/python-3.13%2B-blue)
+![License](https://img.shields.io/badge/license-Apache%202.0-green)
+![Telegram Bot API](https://img.shields.io/badge/Telegram%20Bot%20API-supported-blue)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-integrated-red)
+![Home Assistant](https://img.shields.io/badge/Home%20Assistant-compatible-blue)
 
-### 🤖 AI-Powered Intelligence
-- **Image Analysis**: Send photos to get AI-generated descriptions using Google Gemini
-- **Text Processing**: Chat with Gemini AI for general assistance via `/gemini` command
-- **Smart Responses**: Context-aware responses powered by Google's latest AI models
+## ✨ Overview
 
-### 🏠 Home Assistant Integration
-- **Weather Forecasts**: Get weather updates from your Home Assistant setup
-- **Home Automation**: Access and control your smart home devices
-- **Daily Briefings**: Automated morning agenda with weather and calendar events
+Flint transforms your Telegram experience into a powerful command center, bringing together:
+- **Advanced AI capabilities** through Google Gemini
+- **Smart home control** via Home Assistant
+- **Extensible functionality** with Model Control Protocol (MCP) servers
+- **Intelligent automation** with scheduled tasks and contextual responses
 
-### 🔧 MCP (Model Control Protocol) Integration
-- **Extensible Architecture**: Connect to various MCP servers for specialized functionality
-- **Dynamic Commands**: Each enabled MCP becomes a Telegram command
-- **Configuration Flexibility**: YAML-based configuration for MCP servers
-- **List Available MCPs**: Use `/list_mcps` to see all enabled MCP servers
+Whether you're analyzing images, controlling your smart home, managing your calendar, or just chatting with AI, Flint handles it all through a simple Telegram interface.
 
-### 📅 Scheduling & Automation
-- **Daily Agenda**: Automated morning briefing with a film noir detective persona
-- **Calendar Integration**: Sync with calendar services via MCP
-- **Timezone Support**: Properly handle different timezones for scheduled tasks
+## 🚀 Key Features
 
-### 🔒 Security Features
-- **User Filtering**: Restrict bot access to specific Telegram usernames
-- **Secure Token Management**: Environment-based configuration for sensitive data
-- **Chat Isolation**: Responses limited to configured chat IDs
+### 🤖 AI Intelligence
+- **Vision Analysis**: Send photos for instant AI-powered descriptions and analysis
+- **Conversational AI**: Natural language interactions with Google Gemini
+- **Context-Aware Responses**: Smart replies based on conversation history
+- **Multi-Modal Support**: Process text, images, and structured data
 
-## Installation
+### 🏠 Smart Home Control
+- **Home Assistant Integration**: Full control over your smart home devices
+- **Weather Updates**: Real-time weather information from your HA weather entities
+- **Device Management**: Control lights, switches, sensors, and more
+- **State Monitoring**: Track device states and sensor readings
+
+### 🔌 Extensible Architecture (MCP)
+- **Dynamic Plugin System**: Add new capabilities through MCP servers
+- **Command Auto-Registration**: Each MCP server becomes a Telegram command
+- **Popular Integrations**: GitHub, Calendar, Filesystem, and more
+- **Custom Protocols**: Build your own MCP servers for specialized needs
+
+### 📅 Automation & Scheduling
+- **Daily Briefings**: Customizable morning agenda with personality
+- **Smart Scheduling**: Timezone-aware task automation
+- **Calendar Integration**: Sync with your calendar services
+- **Event Reminders**: Never miss important appointments
+
+### 🔐 Security First
+- **User Allowlisting**: Restrict access to authorized users only
+- **Environment-Based Config**: Secure credential management
+- **Chat Isolation**: Separate conversations by chat ID
+- **Token Security**: Best practices for API key handling
+
+## 📦 Installation
 
 ### Prerequisites
-- Python 3.13 or higher
-- Telegram Bot Token (obtain from [@BotFather](https://t.me/botfather))
-- Google Gemini API Key
-- Home Assistant instance (optional)
-- MCP servers (optional)
 
-### Setup
+- **Python 3.13+** (required for latest features)
+- **Telegram Bot Token** from [@BotFather](https://t.me/botfather)
+- **Google Gemini API Key** from [Google AI Studio](https://makersuite.google.com/app/apikey)
+- **Home Assistant** instance with long-lived access token (optional)
+- **MCP Servers** for extended functionality (optional)
 
-1. Clone the repository:
+### Quick Start
+
+#### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/vrutkovs/flint.git
 cd flint
 ```
 
-2. Install dependencies using uv:
+#### 2. Set Up Python Environment
+
+Using `uv` (recommended):
 ```bash
+uv venv
 uv pip install -e .
 ```
 
-3. Create a `.env` file with your configuration (see Configuration section)
+Or using standard `pip`:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -e .
+```
 
-4. Run the bot:
+#### 3. Configure Environment
+
+Create a `.env` file in the project root:
+
+```env
+# Core Configuration (Required)
+TELEGRAM_TOKEN=your_telegram_bot_token
+TELEGRAM_CHAT_ID=-1001234567890
+GOOGLE_API_KEY=your_gemini_api_key
+MODEL_NAME=gemini-2.0-flash-exp
+
+# Home Assistant (Required for HA features)
+HA_URL=http://homeassistant.local:8123
+HA_TOKEN=your_long_lived_access_token
+HA_WEATHER_ENTITY_ID=weather.home
+
+# MCP Configuration (Required for MCP features)
+MCP_CONFIG_PATH=/path/to/mcp_config.yaml
+SUMMARY_MCP_CALENDAR_NAME=calendar
+
+# Optional Features
+SCHEDULED_AGENDA_TIME=07:30
+TZ=America/New_York
+USER_FILTER=allowed_user1,allowed_user2
+```
+
+#### 4. Launch Flint
+
 ```bash
 python src/main.py
 ```
 
-## Configuration
+## ⚙️ Configuration Guide
 
-Flint uses environment variables for configuration. Create a `.env` file in the project root with the following variables:
+### Environment Variables
 
-### Required Configuration
+#### Required Settings
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `TELEGRAM_TOKEN` | Your Telegram Bot API token | `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11` |
-| `TELEGRAM_CHAT_ID` | Telegram chat ID where the bot will operate | `-1001234567890` |
-| `GOOGLE_API_KEY` | Google Gemini API key for AI features | `AIzaSy...` |
-| `MODEL_NAME` | Google Gemini model to use | `gemini-2.0-flash-exp` |
-| `HA_URL` | Home Assistant instance URL | `http://homeassistant.local:8123` |
-| `HA_TOKEN` | Home Assistant long-lived access token | `eyJ0eXAiOiJKV1...` |
-| `HA_WEATHER_ENTITY_ID` | Weather entity ID in Home Assistant | `weather.home` |
-| `MCP_CONFIG_PATH` | Path to MCP configuration YAML file | `/path/to/mcp_config.yaml` |
-| `SUMMARY_MCP_CALENDAR_NAME` | Name of the MCP server for calendar integration | `calendar` |
+| `TELEGRAM_TOKEN` | Bot API token from BotFather | `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11` |
+| `TELEGRAM_CHAT_ID` | Target chat/group ID | `-1001234567890` |
+| `GOOGLE_API_KEY` | Google AI API key | `AIzaSyA...` |
+| `MODEL_NAME` | Gemini model variant | `gemini-2.0-flash-exp` |
+| `HA_URL` | Home Assistant URL | `http://192.168.1.100:8123` |
+| `HA_TOKEN` | HA access token | `eyJ0eXAi...` |
+| `HA_WEATHER_ENTITY_ID` | Weather entity | `weather.home` |
+| `MCP_CONFIG_PATH` | MCP config file | `/home/user/.config/flint/mcp.yaml` |
+| `SUMMARY_MCP_CALENDAR_NAME` | Calendar MCP name | `calendar` |
 
-### Optional Configuration
+#### Optional Settings
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
-| `SCHEDULED_AGENDA_TIME` | Time for daily agenda (HH:MM format) | Not set | `07:30` |
-| `TZ` | Timezone for scheduled tasks | `UTC` | `Europe/Prague` |
-| `USER_FILTER` | Comma-separated list of allowed Telegram usernames | Empty (all users allowed) | `user1,user2,user3` |
+| `SCHEDULED_AGENDA_TIME` | Daily briefing time | None | `07:30` |
+| `TZ` | Timezone | `UTC` | `Europe/London` |
+| `USER_FILTER` | Allowed usernames | None | `alice,bob` |
 
-### Example `.env` file:
+### MCP Server Configuration
 
-```env
-# Telegram Configuration
-TELEGRAM_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_ID=-1001234567890
-
-# Google AI Configuration
-GOOGLE_API_KEY=your_gemini_api_key_here
-MODEL_NAME=gemini-2.0-flash-exp
-
-# Home Assistant Configuration
-HA_URL=http://192.168.1.100:8123
-HA_TOKEN=your_ha_token_here
-HA_WEATHER_ENTITY_ID=weather.home
-
-# MCP Configuration
-MCP_CONFIG_PATH=/home/user/.config/mcp/config.yaml
-SUMMARY_MCP_CALENDAR_NAME=calendar
-
-# Optional Settings
-SCHEDULED_AGENDA_TIME=07:30
-TZ=Europe/Prague
-USER_FILTER=johndoe,janedoe
-```
-
-## MCP Configuration
-
-MCP (Model Control Protocol) servers extend the bot's functionality. Configure them in a YAML file:
-
-### Example MCP Configuration (`mcp_config.yaml`):
+Configure MCP servers in a YAML file specified by `MCP_CONFIG_PATH`:
 
 ```yaml
 mcps:
+  # Calendar Integration
   calendar:
     type: stdio
     enabled: true
     config:
-      cmd: /path/to/calendar-mcp
-      args: []
+      cmd: /usr/local/bin/calendar-mcp
+      args: ["--format", "json"]
       env_keys:
-        - CALENDAR_API_KEY
+        - GOOGLE_CALENDAR_API_KEY
 
+  # GitHub Integration
   github:
     type: stdio
     enabled: true
     config:
       cmd: npx
-      args: 
-        - -y
-        - "@modelcontextprotocol/server-github"
+      args: ["-y", "@modelcontextprotocol/server-github"]
       envs:
         GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
 
+  # Filesystem Access (disabled by default for security)
   filesystem:
     type: stdio
     enabled: false
     config:
       cmd: /usr/local/bin/filesystem-mcp
-      args:
-        - "--read-only"
+      args: ["--read-only", "--path", "/safe/directory"]
+      
+  # Custom MCP Server
+  custom:
+    type: stdio
+    enabled: true
+    config:
+      cmd: python
+      args: ["/path/to/custom_mcp.py"]
+      envs:
+        API_KEY: ${CUSTOM_API_KEY}
 ```
 
-Each enabled MCP becomes available as a Telegram command. For example:
-- `/calendar list events today` - Interacts with calendar MCP
-- `/github search repos tensorflow` - Uses GitHub MCP
-- `/list_mcps` - Shows all available MCP commands
-
-## Usage
+## 📱 Usage
 
 ### Basic Commands
 
-1. **Send a Photo**: Simply send any image to the bot, and it will provide an AI-generated description
+#### 🖼️ Image Analysis
+Simply send any photo to the bot:
+```
+[Send an image]
+Bot: "I can see a sunset over the ocean with vibrant orange and purple hues..."
+```
 
-2. **Text Chat**: Use the `/gemini` command followed by your message:
-   ```
-   /gemini What's the weather like today?
-   ```
+#### 💬 AI Chat
+```
+/gemini Explain quantum computing in simple terms
+```
 
-3. **MCP Commands**: Use any enabled MCP as a command:
-   ```
-   /calendar show events for tomorrow
-   /github list my recent pull requests
-   ```
+#### 🔧 MCP Commands
+```
+/calendar show events tomorrow
+/github list my pull requests
+/filesystem read /path/to/file.txt
+```
 
-4. **List Available MCPs**:
-   ```
-   /list_mcps
-   ```
+#### 📋 List Available Commands
+```
+/list_mcps
+```
 
-### Daily Agenda
+### Advanced Features
 
-If `SCHEDULED_AGENDA_TIME` is configured, the bot will automatically send a daily briefing at the specified time. The briefing includes:
-- Weather forecast from Home Assistant
-- Calendar events for the next 24 hours
-- All delivered in a film noir detective persona
+#### Daily Agenda
+Configure `SCHEDULED_AGENDA_TIME` to receive a personalized daily briefing:
+```
+🕵️ Morning Report - Tuesday, March 5, 2024
 
-## Architecture
+The fog rolls in at 7°C, climbing to 15°C by noon. 
+Rain expected around 3 PM - pack an umbrella, detective.
+
+Your dance card for today:
+• 9:00 AM - Team standup (Zoom)
+• 2:00 PM - Client meeting (Conference Room B)
+• 5:30 PM - Gym session
+
+Another day in the city that never sleeps...
+```
+
+#### Smart Home Control
+Interact with Home Assistant entities:
+```
+/homeassistant turn on living_room_lights
+/homeassistant set thermostat to 22
+```
+
+## 🏗️ Architecture
 
 ### Project Structure
 ```
 flint/
 ├── src/
-│   ├── main.py              # Application entry point
+│   ├── main.py                 # Application entry point
 │   ├── telega/
-│   │   ├── main.py          # Main Telegram bot handler
-│   │   └── settings.py      # Configuration management
+│   │   ├── main.py            # Core bot logic
+│   │   └── settings.py        # Configuration management
 │   └── plugins/
-│       ├── homeassistant.py # Home Assistant integration
-│       ├── mcp.py           # MCP server management
-│       ├── photo.py         # Image processing
-│       └── schedule.py      # Scheduled tasks
-├── tests/                   # Test suite
-├── pyproject.toml          # Project dependencies
-└── README.md               # This file
+│       ├── homeassistant.py  # HA integration
+│       ├── mcp.py            # MCP server management
+│       ├── photo.py          # Image processing
+│       └── schedule.py       # Task scheduling
+├── tests/                     # Test suite
+├── .env.example              # Environment template
+├── pyproject.toml            # Dependencies
+├── LICENSE                   # Apache 2.0
+└── README.md                 # Documentation
 ```
 
-### Key Components
+### Technology Stack
 
-- **Telega Class**: Core bot logic and message handling
-- **Settings Class**: Centralized configuration management
-- **MCP Integration**: Dynamic command registration and execution
-- **Plugin System**: Modular architecture for features
-- **Structured Logging**: Comprehensive logging with structlog
+- **Core Framework**: `python-telegram-bot` for Telegram integration
+- **AI Engine**: `google-genai` for Gemini AI capabilities
+- **Smart Home**: `homeassistant-api` for HA communication
+- **Protocol Support**: `mcp` for Model Control Protocol
+- **Image Processing**: `pillow` for image manipulation
+- **Logging**: `structlog` for structured logging
+- **Configuration**: `python-dotenv` for environment management
 
-## Dependencies
+## 🛠️ Development
 
-Main dependencies include:
-- `python-telegram-bot` - Telegram Bot API wrapper
-- `google-genai` - Google Gemini AI integration
-- `homeassistant-api` - Home Assistant API client
-- `mcp` - Model Control Protocol support
-- `pillow` - Image processing
-- `structlog` - Structured logging
-- `python-dotenv` - Environment variable management
-- `pytz` - Timezone handling
-- `pyyaml` - YAML configuration parsing
+### Running Tests
 
-## Security Considerations
+```bash
+pytest tests/
+```
 
-1. **API Keys**: Never commit API keys or tokens to version control
-2. **User Filtering**: Always configure `USER_FILTER` in production to limit access
-3. **Chat ID**: Use specific chat IDs to prevent unauthorized access
-4. **Token Security**: Use environment variables or secure vaults for sensitive data
-5. **Home Assistant**: Ensure your HA instance is properly secured if exposed to the internet
+### Code Style
 
-## Troubleshooting
+```bash
+# Format code
+black src/
+
+# Lint
+ruff check src/
+
+# Type checking
+mypy src/
+```
+
+### Creating Custom MCP Servers
+
+Example custom MCP server:
+
+```python
+# custom_mcp.py
+from mcp import Server, Tool
+
+class CustomMCPServer(Server):
+    def __init__(self):
+        super().__init__("custom-server")
+        
+    @Tool("get_data")
+    async def get_data(self, query: str) -> str:
+        # Your custom logic here
+        return f"Data for: {query}"
+
+if __name__ == "__main__":
+    server = CustomMCPServer()
+    server.run()
+```
+
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **Bot doesn't respond**:
-   - Check if the bot token is correct
-   - Verify the chat ID matches where you're sending messages
-   - Check if your username is in `USER_FILTER` (if configured)
+<details>
+<summary><b>Bot Not Responding</b></summary>
 
-2. **MCP commands not working**:
-   - Verify MCP configuration file path
-   - Check if the MCP server is properly installed
-   - Review logs for MCP initialization errors
+1. Verify your bot token is correct
+2. Check if the chat ID matches your conversation
+3. Ensure your username is in `USER_FILTER` if configured
+4. Check bot permissions in the group/channel
 
-3. **Daily agenda not sending**:
-   - Verify `SCHEDULED_AGENDA_TIME` format (HH:MM)
-   - Check timezone configuration
-   - Ensure calendar MCP is properly configured
+</details>
 
-4. **Image analysis fails**:
-   - Verify Google API key is valid
-   - Check if the selected model supports vision
-   - Ensure image format is supported (JPEG, PNG, etc.)
+<details>
+<summary><b>MCP Commands Not Working</b></summary>
 
-### Logging
+1. Verify MCP configuration file exists and is valid YAML
+2. Check MCP server installation: `which your-mcp-server`
+3. Review logs for initialization errors
+4. Ensure required environment variables are set
 
-The bot uses structured logging. Check logs for detailed error messages and debugging information. Each message includes an `update_id` for tracking specific interactions.
+</details>
 
-## Contributing
+<details>
+<summary><b>Daily Agenda Not Sending</b></summary>
 
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+1. Verify time format: `HH:MM` (24-hour)
+2. Check timezone setting matches your location
+3. Ensure calendar MCP is properly configured
+4. Review logs at the scheduled time
 
-## License
+</details>
 
-This project is open source. Please check the repository for license details.
+<details>
+<summary><b>Image Analysis Errors</b></summary>
 
-## Support
+1. Verify Google API key has Gemini API access
+2. Check selected model supports vision capabilities
+3. Ensure image size is under 20MB
+4. Supported formats: JPEG, PNG, GIF, WebP
 
-For issues, questions, or suggestions, please open an issue on the GitHub repository.
+</details>
+
+### Debug Mode
+
+Enable verbose logging by setting:
+```bash
+export LOG_LEVEL=DEBUG
+python src/main.py
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get started:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+### Development Guidelines
+
+- Follow PEP 8 style guidelines
+- Add tests for new features
+- Update documentation as needed
+- Keep commits atomic and descriptive
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) for the excellent Telegram API wrapper
+- [Google Gemini](https://deepmind.google/technologies/gemini/) for powerful AI capabilities
+- [Home Assistant](https://www.home-assistant.io/) for the amazing home automation platform
+- [Model Control Protocol](https://github.com/modelcontextprotocol) for the extensible server architecture
+
+## 📮 Support
+
+- **Issues**: [GitHub Issues](https://github.com/vrutkovs/flint/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/vrutkovs/flint/discussions)
+- **Security**: Report security vulnerabilities privately via GitHub Security Advisories
+
+---
+
+<p align="center">
+Built with ❤️ by <a href="https://github.com/vrutkovs">vrutkovs</a>
+</p>
