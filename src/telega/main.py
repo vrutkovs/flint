@@ -3,10 +3,8 @@
 import io
 from typing import Optional
 
-
 from telegram import Update
 from telegram.ext import ContextTypes
-
 
 from plugins import photo
 from plugins.mcp import MCPConfigReader,MCPClient
@@ -96,6 +94,23 @@ class Telega:
 
         return True
 
+    async def reply_to_message(self, update: Update, text: str):
+        """
+        Reply to a message with a text. This renders the text as Markdown with necessary escaping.
+
+        Args:
+            update: Telegram update object
+            text: Text to reply with
+        """
+        if update.message is None:
+            return
+
+        await update.message.reply_text(
+            text=text,
+            reply_to_message_id=update.message.message_id,
+            parse_mode="Markdown",
+        )
+
     async def handle_photo_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         Handle incoming Telegram messages with media content.
@@ -122,9 +137,7 @@ class Telega:
         # Download the file
         file_buffer = await self.download_file(update, context)
         if not file_buffer:
-            await update.message.reply_text(
-                "Sorry, I couldn't download your file. Please try again."
-            )
+            await self.reply_to_message(update, "Sorry, I couldn't download your file. Please try again.")
             return
 
         try:
@@ -142,16 +155,12 @@ class Telega:
             )
 
             # Reply with generated text
-            await update.message.reply_text(
-                description,
-                reply_to_message_id=update.message.message_id
-            )
+            await self.reply_to_message(update, description)
 
         except Exception as e:
             self.settings.logger.error("Error processing image", error=str(e), update_id=update.update_id)
-            await update.message.reply_text(
-                f"Sorry, I encountered an error processing your image. See logs for update ID: {update.update_id}"
-            )
+            await self.reply_to_message(update,
+                f"Sorry, I encountered an error processing your image. See logs for update ID: {update.update_id}")
         finally:
             # Clean up file buffer
             file_buffer.close()
@@ -178,13 +187,13 @@ class Telega:
             mcps = self.mcps.get_enabled_mcps()
 
             # Reply with list of enabled MCPs
-            await update.message.reply_text(
+            await self.reply_to_message(update,
                 f"Here are the MCPs I have enabled:\n{"\n".join(mcps)}",
             )
         except Exception as e:
             self.settings.logger.error("Error listing MCPs", error=str(e), update_id=update.update_id)
-            await update.message.reply_text(
-                f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}"
+            await self.reply_to_message(update,
+                f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}",
             )
 
     async def handle_mcp_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -225,16 +234,12 @@ class Telega:
                 raise ValueError(f"MCP {tool_name} response is empty")
 
             # Reply with generated text
-            await update.message.reply_text(
-                text=reply_text,
-                reply_to_message_id=update.message.message_id
-            )
+            await self.reply_to_message(update, reply_text)
 
         except Exception as e:
             self.settings.logger.error("Error processing command", error=str(e), update_id=update.update_id)
-            await update.message.reply_text(
-                f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}"
-            )
+            await self.reply_to_message(update,
+                f"Sorry, I encountered an error processing this command. See logs for update ID: {update.update_id}")
 
     async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -266,13 +271,9 @@ class Telega:
 
             reply_text = response.text.strip()
 
-            await update.message.reply_text(
-                reply_text,
-                reply_to_message_id=update.message.message_id
-            )
+            await self.reply_to_message(update, reply_text)
 
         except Exception as e:
             self.settings.logger.error("Error processing message", error=str(e), update_id=update.update_id)
-            await update.message.reply_text(
-                f"Sorry, I couldn't process your message. See logs for update ID: {update.update_id}"
-            )
+            await self.reply_to_message(update,
+                f"Sorry, I couldn't process your message. See logs for update ID: {update.update_id}")
