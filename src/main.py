@@ -5,7 +5,7 @@ import datetime
 from dotenv import load_dotenv, find_dotenv
 
 import structlog
-from telegram.ext import Application, MessageHandler, filters
+from telegram.ext import Application, MessageHandler, CommandHandler, filters
 from google import genai
 
 from telega.main import Telega
@@ -106,8 +106,16 @@ except Exception as e:
 # Handler for photo messages
 app.add_handler(MessageHandler(filters.PHOTO, telega.handle_photo_message))
 
-# Handler for text messages
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, telega.handle_text_message))
+# Add handlers for MCP clients
+telega.mcps.reload_config()
+
+for mcp_name in telega.mcps.get_enabled_mcps():
+    log.info(f'Registering handler for MCP client: {mcp_name}')
+    app.add_handler(CommandHandler(mcp_name, telega.handle_mcp_message))
+
+app.add_handler(CommandHandler("list_mcps", telega.handle_list_mcps_message))
+app.add_handler(CommandHandler("gemini", telega.handle_text_message))
+log.info('Registered handler for Gemini')
 
 log.info('Message handlers registered')
 

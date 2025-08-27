@@ -9,6 +9,7 @@ from telegram.ext import ContextTypes
 
 
 from plugins import photo
+from plugins.mcp import MCPConfigReader,MCPClient
 from telega.settings import Settings
 
 
@@ -23,6 +24,7 @@ class Telega:
             settings: Settings object containing genai client, logger, and model name
         """
         self.settings = settings
+        self.mcps = MCPConfigReader(self.settings)
 
     async def download_file(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[io.BytesIO]:
         """
@@ -124,6 +126,72 @@ class Telega:
             # Clean up file buffer
             file_buffer.close()
 
+    async def handle_list_mcps_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Output a list of enabled MCPs.
+
+        Args:
+            update: Telegram update object
+            context: Telegram context object
+        """
+        if not update.message:
+            return
+
+        self.settings.logger.info("Listing MCPs", update_id=update.update_id)
+
+        # Get list of enabled MCPs
+        mcps = self.mcps.get_enabled_mcps()
+
+        # Reply with list of enabled MCPs
+        await update.message.reply_text(
+            f"Here are the MCPs I have enabled:\n{"\n".join(mcps)}",
+        )
+
+    async def handle_mcp_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        Handle messages to MCPs.
+
+        Args:
+            update: Telegram update object
+            context: Telegram context object
+        """
+        if not update.message or not update.message.text or not context.args:
+            return
+
+        tool_name = update.message.text.split()[0].replace("/", "").lower()
+        tool_prompt = " ".join(context.args)
+        self.settings.logger.info("Processing MCP message", update_id=update.update_id, command=tool_name, params=tool_prompt)
+
+        try:
+            self.mcps.reload_config()
+
+            mcp_config = self.mcps.get_mcp_configuration(tool_name)
+            if not mcp_config:
+                raise ValueError(f"MCP {tool_name} configuration not found")
+            else:
+                server_params = await mcp_config.get_server_params()
+                mcp = MCPClient(name=mcp_config.name, server_params=server_params, logger=self.settings.logger)
+                if mcp is None:
+                    raise ValueError(f"MCP {tool_name} cannot be created")
+                else:
+                    reply_text = await mcp.get_response(settings=self.settings, prompt=tool_prompt)
+            self.settings.logger.error(f"MCP {tool_name} response: {reply_text}")
+
+            if not reply_text:
+                raise ValueError(f"MCP {tool_name} response is empty")
+
+            # Reply with generated text
+            await update.message.reply_text(
+                text=reply_text,
+                reply_to_message_id=update.message.message_id
+            )
+
+        except Exception as e:
+            self.settings.logger.error("Error processing file", error=str(e), update_id=update.update_id)
+            await update.message.reply_text(
+                "Sorry, I encountered an error processing your file. Please try again."
+            )
+
     async def handle_text_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         Handle text-only messages.
@@ -146,7 +214,6 @@ class Telega:
                 ]
             )
             if not response.text:
-                self.settings.logger.error("Empty response from AI", update_id=update.update_id)
                 raise ValueError("Empty response from AI")
 
             reply_text = response.text.strip()
