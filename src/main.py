@@ -23,6 +23,10 @@ Deliver the facts, straight, no chaser.
 
 Organize the information clearly. Use emojis if they genuinely enhance the
 message and fit your adopted persona.
+
+Always reply in the same language as the user.
+When running the tool, translate the user's message to English.
+Always translate the response back to the user's language, including tool output.
 """
 
 # Settings are read from environment variables
