@@ -175,7 +175,7 @@ mcps:
     config:
       cmd: /usr/local/bin/filesystem-mcp
       args: ["--read-only", "--path", "/safe/directory"]
-      
+
   # Custom MCP Server
   custom:
     type: stdio
@@ -222,7 +222,7 @@ Configure `SCHEDULED_AGENDA_TIME` to receive a personalized daily briefing:
 ```
 🕵️ Morning Report - Tuesday, March 5, 2024
 
-The fog rolls in at 7°C, climbing to 15°C by noon. 
+The fog rolls in at 7°C, climbing to 15°C by noon.
 Rain expected around 3 PM - pack an umbrella, detective.
 
 Your dance card for today:
@@ -288,9 +288,6 @@ black src/
 
 # Lint
 ruff check src/
-
-# Type checking
-mypy src/
 ```
 
 ### Creating Custom MCP Servers
@@ -304,7 +301,7 @@ from mcp import Server, Tool
 class CustomMCPServer(Server):
     def __init__(self):
         super().__init__("custom-server")
-        
+
     @Tool("get_data")
     async def get_data(self, query: str) -> str:
         # Your custom logic here
