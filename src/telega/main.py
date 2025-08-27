@@ -108,7 +108,7 @@ class Telega:
         await update.message.reply_text(
             text=text,
             reply_to_message_id=update.message.message_id,
-            parse_mode="Markdown",
+            # parse_mode="Markdown",
         )
 
     async def handle_photo_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
