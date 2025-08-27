@@ -62,6 +62,7 @@ if not SUMMARY_MCP_CALENDAR_NAME:
 
 SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
 TZ = os.getenv('TZ', 'UTC')
+USER_FILTER = os.environ.get("USER_FILTER", "").split(',')
 
 # Configure structured logging
 log = structlog.get_logger()
@@ -87,6 +88,7 @@ settings = Settings(
     ha_weather_entity_id=HA_WEATHER_ENTITY_ID,
     mcp_config_path=MCP_CONFIG_PATH,
     summary_mcp_calendar_name=SUMMARY_MCP_CALENDAR_NAME,
+    user_filter=USER_FILTER,
 )
 log.info('Settings instance created')
 

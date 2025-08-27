@@ -70,6 +70,32 @@ class Telega:
             self.settings.logger.error("Failed to download file", error=str(e), update_id=update.update_id)
             return None
 
+    async def is_user_allowed(self, update: Update):
+        """
+        Verify if the user is allowed to use the bot.
+
+        Args:
+            update: Telegram update object
+            context: Telegram context object
+        """
+
+        if not self.settings.USER_FILTER or self.settings.USER_FILTER == []:
+            return True
+
+        # Check if user is allowed to use the bot
+        if not update.effective_user:
+            self.settings.logger.info("Bot message, ignoring", update_id=update.update_id)
+            return False
+
+        if update.effective_user.username not in self.settings.USER_FILTER:
+            self.settings.logger.info("Unexpected user",
+                user_filter=self.settings.USER_FILTER,
+                user=update.effective_user.username,
+                update_id=update.update_id)
+            return False
+
+        return True
+
     async def handle_photo_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         Handle incoming Telegram messages with media content.
@@ -85,6 +111,10 @@ class Telega:
             or not update.message.photo
         ):
             self.settings.logger.debug("Unsupported message type", update_id=update.update_id)
+            return
+
+        # Check if user is allowed to use the bot
+        if not await self.is_user_allowed(update):
             return
 
         self.settings.logger.info("Processing message", update_id=update.update_id)
@@ -134,6 +164,10 @@ class Telega:
             update: Telegram update object
             context: Telegram context object
         """
+        # Check if user is allowed to use the bot
+        if not await self.is_user_allowed(update):
+            return
+
         if not update.message:
             return
 
@@ -161,6 +195,10 @@ class Telega:
             update: Telegram update object
             context: Telegram context object
         """
+        # Check if user is allowed to use the bot
+        if not await self.is_user_allowed(update):
+            return
+
         if not update.message or not update.message.text or not context.args:
             return
 
@@ -206,6 +244,10 @@ class Telega:
             update: Telegram update object
             context: Telegram context object
         """
+        # Check if user is allowed to use the bot
+        if not  await self.is_user_allowed(update):
+            return
+
         if not update.message or not update.message.text:
             return
 

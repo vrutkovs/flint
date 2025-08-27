@@ -18,6 +18,7 @@ class Settings:
         ha_weather_entity_id: str,
         mcp_config_path: str,
         summary_mcp_calendar_name: str,
+        user_filter: list = [],
         model_name: str = "gemini-2.5-flash"
     ):
         """
@@ -38,6 +39,7 @@ class Settings:
         self.ha_weather_entity_id = ha_weather_entity_id
         self.mcp_config_path = mcp_config_path
         self.SUMMARY_MCP_CALENDAR_NAME = summary_mcp_calendar_name
+        self.USER_FILTER = user_filter
 
     def __repr__(self) -> str:
         """Return string representation of Settings."""
