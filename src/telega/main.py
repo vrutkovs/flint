@@ -320,7 +320,46 @@ class Telega:
                 raise ValueError("Empty response from AI")
 
             reply_text = response.text.strip()
+            await self.reply_to_message(update, reply_text)
 
+        except Exception as e:
+            self.settings.logger.error(
+                "Error processing message", error=str(e), update_id=update.update_id
+            )
+            err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
+            self.settings.logger.error(
+                "Error processing message", error=err, update_id=update.update_id
+            )
+            await self.reply_to_message(
+                update,
+                f"Sorry, I couldn't process your message. See logs for update ID: {update.update_id}",
+            )
+
+    async def handle_rag_request(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ):
+        """
+        Handle requests to RAG database.
+
+        Args:
+            update: Telegram update object
+            context: Telegram context object
+        """
+        # Check if user is allowed to use the bot
+        if not await self.is_user_allowed(update):
+            return
+
+        if not update.message or not update.message.text or not self.settings.qa_chain:
+            return
+
+        self.settings.logger.info("Processing text message", update_id=update.update_id)
+
+        try:
+            result = self.settings.qa_chain.invoke({"query": update.message.text})
+            reply_text = result["result"].strip()
+            reply_text += "\nSources:"
+            for doc in result["source_documents"]:
+                reply_text += f"\n- {doc.metadata['source']}"
             await self.reply_to_message(update, reply_text)
 
         except Exception as e:

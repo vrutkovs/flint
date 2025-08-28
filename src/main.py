@@ -101,7 +101,7 @@ settings = Settings(
     system_instructions=SYSTEM_INSTRUCTIONS,
     rag_embedding_model=RAG_EMBEDDING_MODEL,
     rag_location=RAG_LOCATION,
-    rag_google_project_id=RAG_GOOGLE_PROJECT_ID,
+    google_api_key=API_KEY,
 )
 log.info("Settings instance created")
 
@@ -129,7 +129,10 @@ for mcp_name in telega.mcps.get_enabled_mcps():
     app.add_handler(CommandHandler(mcp_name, telega.handle_mcp_message))
 
 app.add_handler(CommandHandler("list_mcps", telega.handle_list_mcps_message))
-app.add_handler(CommandHandler("gemini", telega.handle_text_message))
+app.add_handler(CommandHandler("rag", telega.handle_rag_request))
+app.add_handler(
+    MessageHandler(filters.TEXT & ~filters.COMMAND, telega.handle_text_message)
+)
 log.info("Registered handler for Gemini")
 
 log.info("Message handlers registered")
