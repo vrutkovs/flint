@@ -10,7 +10,7 @@ def prepare_rag_tool(
 ):
     data = []
     for location in rag_location.split(","):
-        loader = DirectoryLoader(location, use_multithreading=True)
+        loader = DirectoryLoader(location, use_multithreading=True, silent_errors=True)
         chunk = loader.load()
         logger.debug("RAG: loaded documents", location=location, count=len(data))
         data.extend(chunk)
