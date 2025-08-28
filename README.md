@@ -158,6 +158,7 @@ python src/main.py
 | `SYSTEM_INSTRUCTIONS` | Custom AI personality | Film noir detective | See below |
 | `RAG_EMBEDDING_MODEL` | Google Generative AI embedding model | None | `gemini-embedding-001` |
 | `RAG_LOCATION` | Local path to knowledge base documents | None | `/path/to/docs` |
+| `MCP_{name}_PROMPT` | Custom prompt for specific MCP server | None | See MCP Custom Prompts |
 
 #### Default System Instructions
 
@@ -224,6 +225,18 @@ mcps:
 
 Each MCP server automatically becomes a Telegram command with the same name.
 
+#### MCP Custom Prompts
+
+You can customize the system prompt for individual MCP servers by setting environment variables in the format `MCP_{NAME}_PROMPT`, where `{NAME}` is the uppercase name of the MCP server.
+
+For example, to add a custom prompt for the GitHub MCP server:
+
+```env
+MCP_GITHUB_PROMPT="You are a GitHub expert assistant. Focus on providing clear, concise information about repositories, issues, and pull requests."
+```
+
+This custom prompt will be prepended to the user's message when invoking that specific MCP server, allowing you to tailor the AI's behavior for different integrations.
+
 ## 📱 Usage
 
 ### Message Handling
@@ -266,6 +279,8 @@ Each configured MCP server automatically becomes a command:
 /github List my pull requests
 /filesystem Read /path/to/file.txt
 ```
+
+You can customize the behavior of each MCP server by setting custom prompts using environment variables (see MCP Custom Prompts section above).
 
 #### 📊 System Commands
 ```
