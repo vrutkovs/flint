@@ -7,15 +7,15 @@ import pytz
 from google import genai
 from telegram.ext import ContextTypes
 
-from src.plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
-from src.plugins.schedule import (
+from plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
+from plugins.schedule import (
     CALENDAR_MCP_PROMPT,
     PROMPT_TEMPLATE,
     WEATHER_MCP_PROMPT,
     ScheduleData,
     send_agenda,
 )
-from src.telega.settings import Settings
+from telega.settings import Settings
 
 
 class TestScheduleData:

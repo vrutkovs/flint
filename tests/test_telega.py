@@ -10,8 +10,8 @@ from telegram import Animation, Chat, Document, Message, PhotoSize, Sticker, Upd
 from telegram.ext import ContextTypes
 
 from src.plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
-from src.telega.main import Telega
-from src.telega.settings import Settings
+from telega.main import Telega
+from telega.settings import Settings
 
 
 class TestTelega:
@@ -32,7 +32,7 @@ class TestTelega:
     @pytest.fixture
     def telega(self, mock_settings):
         """Create Telega instance with mock settings."""
-        with patch("src.telega.main.MCPConfigReader"):
+        with patch("telega.main.MCPConfigReader"):
             return Telega(mock_settings)
 
     @pytest.fixture
@@ -56,7 +56,7 @@ class TestTelega:
 
     def test_telega_initialization(self, mock_settings):
         """Test Telega initialization."""
-        with patch("src.telega.main.MCPConfigReader") as mock_mcp_reader:
+        with patch("telega.main.MCPConfigReader") as mock_mcp_reader:
             telega = Telega(mock_settings)
 
             assert telega.settings == mock_settings
@@ -127,7 +127,7 @@ class TestTelega:
         mock_update.message.photo = [Mock(file_id="photo123")]
         mock_context.bot.get_file.side_effect = Exception("Download failed")
 
-        with patch("src.telega.main.format_exc_info") as mock_format_exc:
+        with patch("telega.main.format_exc_info") as mock_format_exc:
             mock_format_exc.return_value = {"error": "test"}
             result = await telega.download_file(mock_update, mock_context)
 
@@ -206,7 +206,7 @@ class TestTelega:
         telega.download_file = AsyncMock(return_value=io.BytesIO(b"test"))
         telega.reply_to_message = AsyncMock()
 
-        with patch("src.telega.main.photo.generate_text_for_image", new_callable=AsyncMock) as mock_generate:
+        with patch("telega.main.photo.generate_text_for_image", new_callable=AsyncMock) as mock_generate:
             mock_generate.return_value = "This is a test image"
 
             await telega.handle_photo_message(mock_update, mock_context)
@@ -279,7 +279,7 @@ class TestTelega:
         mock_config.get_server_params = AsyncMock()
         telega.mcps.get_mcp_configuration.return_value = mock_config
 
-        with patch("src.telega.main.MCPClient") as mock_mcp_client_class:
+        with patch("telega.main.MCPClient") as mock_mcp_client_class:
             mock_mcp_instance = Mock(spec=MCPClient)
             mock_mcp_instance.get_response = AsyncMock(return_value="MCP response")
             mock_mcp_client_class.return_value = mock_mcp_instance
@@ -376,9 +376,9 @@ class TestTelega:
         telega.download_file = AsyncMock(return_value=io.BytesIO(b"test"))
         telega.reply_to_message = AsyncMock()
 
-        with patch("src.telega.main.photo.generate_text_for_image", new_callable=AsyncMock) as mock_generate:
+        with patch("telega.main.photo.generate_text_for_image", new_callable=AsyncMock) as mock_generate:
             mock_generate.side_effect = Exception("Processing failed")
-            with patch("src.telega.main.format_exc_info") as mock_format_exc:
+            with patch("telega.main.format_exc_info") as mock_format_exc:
                 mock_format_exc.return_value = {"error": "test"}
 
                 await telega.handle_photo_message(mock_update, mock_context)
@@ -523,7 +523,7 @@ class TestTelega:
         mock_qa_chain.invoke.side_effect = Exception("RAG processing failed")
         telega.settings.qa_chain = mock_qa_chain
 
-        with patch("src.telega.main.format_exc_info") as mock_format_exc:
+        with patch("telega.main.format_exc_info") as mock_format_exc:
             mock_format_exc.return_value = {"error": "test"}
 
             await telega.handle_rag_request(mock_update, mock_context)

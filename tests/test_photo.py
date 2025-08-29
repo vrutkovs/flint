@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from PIL import Image
 
-from src.plugins.photo import PROMPT, generate_text_for_image
-from src.telega.settings import Settings
+from plugins.photo import PROMPT, generate_text_for_image
+from telega.settings import Settings
 
 
 class TestPhotoPlugin:

@@ -1,4 +1,5 @@
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -100,18 +101,36 @@ class MCPClient:
             self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
             response = await settings.genai_client.aio.models.generate_content(
                 model=settings.model_name,
-                contents=[
-                    prompt,
-                ],
+                contents=[prompt],
                 config=genconfig,
             )
             self.logger.debug(f"MCP {self.name} response: {response}")
+
+            # Robust extraction with None checks
             try:
-                return (
-                    response.candidates[0]  # pyright: ignore
-                    .content.parts[0]  # pyright: ignore
-                    .text.strip()  # pyright: ignore
-                )
+                candidates = getattr(response, "candidates", None)
+                if not candidates or not isinstance(candidates, list) or not candidates:
+                    self.logger.error(f"MCP {self.name}: response.candidates is missing or empty")
+                    return None
+
+                candidate = candidates[0]
+                content = getattr(candidate, "content", None)
+                if not content:
+                    self.logger.error(f"MCP {self.name}: candidate.content is missing")
+                    return None
+
+                parts = getattr(content, "parts", None)
+                if not parts or not isinstance(parts, list) or not parts:
+                    self.logger.error(f"MCP {self.name}: content.parts is missing or empty")
+                    return None
+
+                part = parts[0]
+                text = getattr(part, "text", None)
+                if not text or not isinstance(text, str):
+                    self.logger.error(f"MCP {self.name}: part.text is missing or not a string")
+                    return None
+
+                return text.strip()
             except Exception as e:
                 self.logger.error(f"MCP {self.name} failed to generate a response: {e}")
                 return None
@@ -208,7 +227,7 @@ class MCPConfigReader:
             raise ValueError(f"MCP configuration for '{name}' must be a dictionary or string")
 
         # Extract configuration fields
-        mcp_type: str = config.get("type", config.get("command", ""))
+        mcp_type: str = str(config.get("type", config.get("command", "")))
         enabled: bool = config.get("enabled", True)
         mcp_config: dict[str, Any] = config.get("config", {})
         metadata: dict[str, Any] = config.get("metadata", {})
@@ -326,6 +345,6 @@ class MCPConfigReader:
         """Check if MCP with given name exists."""
         return name in self.mcps
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, MCPConfiguration]]:
         """Iterate over MCP configurations."""
         return iter(self.mcps.items())

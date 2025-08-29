@@ -74,7 +74,9 @@ class Settings:
         Args:
             system_instructions: System instructions for the AI model
         """
-        system_instruction_split: list[str] = list(system_instructions.split("\n"))
+        from collections.abc import Sequence
+
+        system_instruction_split: Sequence[str] = list(system_instructions.split("\n"))
         self.logger.info(f"System instruction initialized: {system_instruction_split}")
 
         self.genconfig = genai.types.GenerateContentConfig(

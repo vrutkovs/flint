@@ -125,9 +125,11 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
     prompt: str = PROMPT_TEMPLATE.format(weather_data=weather_data, calendar_data=calendar_data)
     settings.logger.info(f"Prompt sent:\n{prompt}")
 
+    from typing import Any, cast
+
     response = await genai_client.aio.models.generate_content(
         model=settings.model_name,
-        contents=[prompt],
+        contents=cast(list[Any], [prompt]),  # list[str | Image | File | Part]
         config=settings.genconfig,
     )
     text: str | None = response.text

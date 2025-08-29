@@ -7,7 +7,7 @@ import pytz
 import structlog
 from google import genai
 
-from src.telega.settings import Settings
+from telega.settings import Settings
 
 
 class TestSettings:
@@ -106,7 +106,7 @@ class TestSettings:
         assert hasattr(settings, "genconfig")
         assert isinstance(settings.genconfig, genai.types.GenerateContentConfig)
 
-    @patch("src.telega.settings.prepare_rag_tool")
+    @patch("telega.settings.prepare_rag_tool")
     def test_settings_with_rag_configuration(self, mock_prepare_rag, basic_settings_params):
         """Test Settings initialization with RAG configuration."""
         mock_qa_chain = Mock()
@@ -164,7 +164,7 @@ class TestSettings:
 
         settings.logger.info.assert_any_call("System instruction initialized: ['Single line instruction']")
 
-    @patch("src.telega.settings.prepare_rag_tool")
+    @patch("telega.settings.prepare_rag_tool")
     def test_rag_initialization_with_all_params(self, mock_prepare_rag, basic_settings_params):
         """Test complete RAG initialization flow."""
         mock_qa_chain = MagicMock()
@@ -229,7 +229,7 @@ class TestSettings:
         for call in settings.logger.info.call_args_list:
             assert "RAG: initializing" not in str(call)
 
-    @patch("src.telega.settings.prepare_rag_tool")
+    @patch("telega.settings.prepare_rag_tool")
     def test_rag_initialization_logging(self, mock_prepare_rag, basic_settings_params):
         """Test that RAG initialization is properly logged."""
         mock_qa_chain = Mock()

@@ -7,6 +7,7 @@ from langchain_community.document_loaders import DirectoryLoader
 from langchain_core.documents import Document
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from pydantic import SecretStr
 
 
 def prepare_rag_tool(
@@ -43,7 +44,7 @@ def prepare_rag_tool(
 
     embeddings: GoogleGenerativeAIEmbeddings = GoogleGenerativeAIEmbeddings(
         model=rag_embedding_model,
-        google_api_key=google_api_key,  # pyright: ignore
+        google_api_key=SecretStr(google_api_key),
     )
 
     # Create vector store and retriever
