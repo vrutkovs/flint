@@ -4,8 +4,7 @@ A sophisticated Telegram bot that seamlessly integrates AI capabilities and exte
 
 ![Python](https://img.shields.io/badge/python-3.13%2B-blue)
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
-![Telegram Bot API](https://img.shields.io/badge/Telegram%20Bot%20API-supported-blue)
-![Google Gemini](https://img.shields.io/badge/Google%20Gemini-integrated-red)
+[![codecov](https://codecov.io/gh/vrutkovs/flint/graph/badge.svg?token=LV7KLZWARS)](https://codecov.io/gh/vrutkovs/flint)
 
 ## ✨ Overview
 
