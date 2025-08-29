@@ -201,12 +201,13 @@ Enable RAG to give the bot access to your custom knowledge base using LangChain:
 2. **Set the environment variables**:
    - `RAG_EMBEDDING_MODEL`: The Google Generative AI embedding model (e.g., `gemini-embedding-001`)
    - `RAG_LOCATION`: Local filesystem path to your documents directory (e.g., `/home/user/documents`)
+   - `RAG_VECTOR_STORAGE`: Local filesystem path to the vector store directory (e.g., `/home/user/vector_store`)
 
 The bot will automatically:
 - Load documents from the specified directory
 - Split them into chunks for efficient retrieval
 - Create embeddings using Google's embedding model
-- Store vectors in memory for fast retrieval
+- Store vectors in a persistent Chroma vector store for fast retrieval
 - Use LangChain's RetrievalQA chain to answer questions based on your documents
 
 ### MCP Server Configuration

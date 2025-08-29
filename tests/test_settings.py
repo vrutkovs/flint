@@ -114,6 +114,7 @@ class TestSettings:
 
         basic_settings_params["rag_embedding_model"] = "text-embedding-004"
         basic_settings_params["rag_location"] = "/path/to/rag/data"
+        basic_settings_params["rag_vector_storage"] = "vector-storage-location"
         basic_settings_params["google_api_key"] = "test-api-key"
 
         settings = Settings(**basic_settings_params)
@@ -123,6 +124,7 @@ class TestSettings:
             settings.logger,
             "/path/to/rag/data",
             "text-embedding-004",
+            "vector-storage-location",
             "test-api-key",
             "gemini-2.5-flash",
         )
@@ -175,6 +177,7 @@ class TestSettings:
             {
                 "rag_embedding_model": "embedding-model",
                 "rag_location": "/rag/location",
+                "rag_vector_storage": "vector-storage-location",
                 "google_api_key": "api-key-123",
             }
         )
@@ -191,8 +194,9 @@ class TestSettings:
         assert call_args[0] == settings.logger
         assert call_args[1] == "/rag/location"
         assert call_args[2] == "embedding-model"
-        assert call_args[3] == "api-key-123"
-        assert call_args[4] == "gemini-2.5-flash"
+        assert call_args[3] == "vector-storage-location"
+        assert call_args[4] == "api-key-123"
+        assert call_args[5] == "gemini-2.5-flash"
 
     def test_settings_attribute_access(self, basic_settings_params):
         """Test that all expected attributes are accessible."""
@@ -239,6 +243,7 @@ class TestSettings:
             {
                 "rag_embedding_model": "text-embedding-004",
                 "rag_location": "/path/to/rag/data",
+                "rag_vector_storage": "vector-storage-location",
                 "google_api_key": "test-api-key",
             }
         )

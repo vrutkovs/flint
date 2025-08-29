@@ -69,7 +69,7 @@ SYSTEM_INSTRUCTIONS: str = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_
 
 RAG_EMBEDDING_MODEL: str | None = os.environ.get("RAG_EMBEDDING_MODEL")
 RAG_LOCATION: str | None = os.environ.get("RAG_LOCATION")
-RAG_GOOGLE_PROJECT_ID: str | None = os.environ.get("RAG_GOOGLE_PROJECT_ID")
+RAG_VECTOR_STORAGE: str | None = os.environ.get("RAG_VECTOR_STORAGE")
 
 SCHEDULED_AGENDA_TIME: str | None = os.environ.get("SCHEDULED_AGENDA_TIME")
 TZ: str = os.getenv("TZ", "UTC")
@@ -101,6 +101,7 @@ settings: Settings = Settings(
     system_instructions=SYSTEM_INSTRUCTIONS,
     rag_embedding_model=RAG_EMBEDDING_MODEL,
     rag_location=RAG_LOCATION,
+    rag_vector_storage=RAG_VECTOR_STORAGE,
     google_api_key=API_KEY,
 )
 log.info("Settings instance created")

@@ -3,9 +3,9 @@ from typing import Any
 import structlog
 from langchain.chains import RetrievalQA
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_chroma.vectorstores import Chroma
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from pydantic import SecretStr
 
@@ -14,6 +14,7 @@ def prepare_rag_tool(
     logger: structlog.BoundLogger,
     rag_location: str,
     rag_embedding_model: str,
+    rag_vector_storage: str,
     google_api_key: str,
     rag_llm_model: str,
 ) -> RetrievalQA:
@@ -24,6 +25,7 @@ def prepare_rag_tool(
         logger: Structured logger instance
         rag_location: Comma-separated list of directory paths containing documents
         rag_embedding_model: Name of the Google embedding model to use
+        rag_vector_storage: Location of the vector storage to use
         google_api_key: Google API key for authentication
         rag_llm_model: Name of the Google Generative AI model to use for generation
 
@@ -33,6 +35,16 @@ def prepare_rag_tool(
     data: list[Document] = []
     locations: list[str] = rag_location.split(",")
 
+    # Create vector store
+    embeddings: GoogleGenerativeAIEmbeddings = GoogleGenerativeAIEmbeddings(
+        model=rag_embedding_model,
+        google_api_key=SecretStr(google_api_key),
+    )
+    vector_store: Chroma = Chroma(
+        embedding_function=embeddings,
+        persist_directory=rag_vector_storage,
+    )
+
     for location in locations:
         loader: DirectoryLoader = DirectoryLoader(location, use_multithreading=True, silent_errors=True)
         chunk: list[Document] = loader.load()
@@ -40,16 +52,10 @@ def prepare_rag_tool(
         data.extend(chunk)
 
     text_splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=1000)
-    docs: list[Document] = text_splitter.split_documents(data)
+    vector_store.add_documents(documents=text_splitter.split_documents(data))
 
-    embeddings: GoogleGenerativeAIEmbeddings = GoogleGenerativeAIEmbeddings(
-        model=rag_embedding_model,
-        google_api_key=SecretStr(google_api_key),
-    )
-
-    # Create vector store and retriever
-    vectorstore: InMemoryVectorStore = InMemoryVectorStore.from_documents(documents=docs, embedding=embeddings)
-    retriever: Any = vectorstore.as_retriever()
+    # Create retriever
+    retriever: Any = vector_store.as_retriever()
 
     llm: ChatGoogleGenerativeAI = ChatGoogleGenerativeAI(
         model=rag_llm_model,
