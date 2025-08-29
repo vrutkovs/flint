@@ -66,6 +66,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: vrutkovs/flint
 
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   lint:
     runs-on: ubuntu-latest
     steps:
