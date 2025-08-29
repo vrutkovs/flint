@@ -1,7 +1,8 @@
 """Unit tests for the Settings class."""
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
 import pytz
 import structlog
 from google import genai
@@ -99,9 +100,7 @@ class TestSettings:
         settings = Settings(**basic_settings_params)
 
         # Verify logger was called with split instructions
-        settings.logger.info.assert_any_call(
-            "System instruction initialized: ['Line 1', 'Line 2', 'Line 3']"
-        )
+        settings.logger.info.assert_any_call("System instruction initialized: ['Line 1', 'Line 2', 'Line 3']")
 
         # Verify genconfig was set
         assert hasattr(settings, "genconfig")
@@ -163,9 +162,7 @@ class TestSettings:
 
         settings = Settings(**basic_settings_params)
 
-        settings.logger.info.assert_any_call(
-            "System instruction initialized: ['Single line instruction']"
-        )
+        settings.logger.info.assert_any_call("System instruction initialized: ['Single line instruction']")
 
     @patch("src.telega.settings.prepare_rag_tool")
     def test_rag_initialization_with_all_params(self, mock_prepare_rag, basic_settings_params):
@@ -174,11 +171,13 @@ class TestSettings:
         mock_prepare_rag.return_value = mock_qa_chain
 
         # Provide all RAG parameters
-        basic_settings_params.update({
-            "rag_embedding_model": "embedding-model",
-            "rag_location": "/rag/location",
-            "google_api_key": "api-key-123",
-        })
+        basic_settings_params.update(
+            {
+                "rag_embedding_model": "embedding-model",
+                "rag_location": "/rag/location",
+                "google_api_key": "api-key-123",
+            }
+        )
 
         settings = Settings(**basic_settings_params)
 
@@ -201,9 +200,17 @@ class TestSettings:
 
         # Test all public attributes are accessible
         attributes = [
-            "genai_client", "logger", "model_name", "chat_id",
-            "timezone", "mcp_config_path", "agenda_mcp_calendar_name",
-            "agenda_mcp_weather_name", "user_filter", "genconfig", "qa_chain"
+            "genai_client",
+            "logger",
+            "model_name",
+            "chat_id",
+            "timezone",
+            "mcp_config_path",
+            "agenda_mcp_calendar_name",
+            "agenda_mcp_weather_name",
+            "user_filter",
+            "genconfig",
+            "qa_chain",
         ]
 
         for attr in attributes:
@@ -228,11 +235,13 @@ class TestSettings:
         mock_qa_chain = Mock()
         mock_prepare_rag.return_value = mock_qa_chain
 
-        basic_settings_params.update({
-            "rag_embedding_model": "text-embedding-004",
-            "rag_location": "/path/to/rag/data",
-            "google_api_key": "test-api-key",
-        })
+        basic_settings_params.update(
+            {
+                "rag_embedding_model": "text-embedding-004",
+                "rag_location": "/path/to/rag/data",
+                "google_api_key": "test-api-key",
+            }
+        )
 
         settings = Settings(**basic_settings_params)
 

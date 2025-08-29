@@ -1,6 +1,7 @@
 """Settings module for Telega bot configuration."""
 
-from typing import Optional, Any
+from typing import Any
+
 import pytz
 import structlog
 from google import genai
@@ -21,10 +22,10 @@ class Settings:
         summary_mcp_calendar_name: str,
         summary_mcp_weather_name: str,
         system_instructions: str,
-        rag_embedding_model: Optional[str] = None,
-        rag_location: Optional[str] = None,
-        google_api_key: Optional[str] = None,
-        user_filter: list[str] = [],
+        rag_embedding_model: str | None = None,
+        rag_location: str | None = None,
+        google_api_key: str | None = None,
+        user_filter: list[str] | None = None,
         model_name: str = "gemini-2.5-flash",
     ) -> None:
         """
@@ -53,14 +54,12 @@ class Settings:
         self.mcp_config_path: str = mcp_config_path
         self.agenda_mcp_calendar_name: str = summary_mcp_calendar_name
         self.agenda_mcp_weather_name: str = summary_mcp_weather_name
-        self.user_filter: list[str] = user_filter
+        self.user_filter: list[str] = user_filter or []
         self.genconfig: genai.types.GenerateContentConfig
-        self.qa_chain: Optional[Any] = None
+        self.qa_chain: Any | None = None
 
         self.__set_genconfig__(system_instructions)
-        self.__set_qa_chain(
-            rag_embedding_model, rag_location, google_api_key, model_name
-        )
+        self.__set_qa_chain(rag_embedding_model, rag_location, google_api_key, model_name)
 
         logger.info("Settings initialized")
 
@@ -84,9 +83,9 @@ class Settings:
 
     def __set_qa_chain(
         self,
-        rag_embedding_model: Optional[str],
-        rag_location: Optional[str],
-        google_api_key: Optional[str],
+        rag_embedding_model: str | None,
+        rag_location: str | None,
+        google_api_key: str | None,
         model_name: str,
     ) -> None:
         """

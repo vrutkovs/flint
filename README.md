@@ -379,21 +379,81 @@ flint/
 
 ## 🛠️ Development
 
+### Setting Up Development Environment
+
+```bash
+# Install development dependencies
+make install-dev
+
+# Install pre-commit hooks
+make install-pre-commit
+```
+
+### Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality and consistency. The hooks will automatically:
+
+- **Format code** with Black (line length: 120)
+- **Lint code** with Ruff
+- **Run tests** with pytest
+- **Check** for common issues (trailing whitespace, large files, merge conflicts, etc.)
+
+#### Manual Usage
+
+```bash
+# Run all pre-commit hooks on all files
+make pre-commit
+
+# Run hooks automatically on git commit (after installation)
+git commit -m "Your commit message"
+
+# Update hooks to latest versions
+make pre-commit-update
+```
+
 ### Running Tests
 
 ```bash
-# Tests are planned but not yet implemented
-# Contributions welcome!
+# Run all tests
+make test
+
+# Run tests with coverage report
+make test-cov
+
+# Run tests directly with pytest
+pytest tests/ -v
 ```
 
 ### Code Style
 
 ```bash
-# Format code with black
-black src/
+# Format code with black and ruff
+make format
 
-# Lint with ruff
-ruff check src/
+# Run linting checks
+make lint
+
+# Run type checking
+make typecheck
+```
+
+### Available Make Commands
+
+```bash
+# Show all available commands
+make help
+
+# Common commands:
+make install          # Install project dependencies
+make install-dev      # Install development dependencies
+make install-pre-commit # Install pre-commit hooks
+make format          # Format code with black and ruff
+make lint            # Run linting checks with ruff
+make test            # Run unit tests
+make test-cov        # Run tests with coverage report
+make typecheck       # Run type checking with mypy
+make pre-commit      # Run all pre-commit hooks on all files
+make clean           # Clean up cache and build files
 ```
 
 ### Creating Custom MCP Servers

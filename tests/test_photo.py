@@ -1,11 +1,12 @@
 """Unit tests for the photo plugin."""
 
 import io
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
 from PIL import Image
 
-from src.plugins.photo import generate_text_for_image, PROMPT
+from src.plugins.photo import PROMPT, generate_text_for_image
 from src.telega.settings import Settings
 
 
@@ -27,9 +28,9 @@ class TestPhotoPlugin:
     def sample_image_buffer(self):
         """Create a sample image buffer."""
         # Create a simple 10x10 RGB image
-        img = Image.new('RGB', (10, 10), color='red')
+        img = Image.new("RGB", (10, 10), color="red")
         buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
+        img.save(buffer, format="PNG")
         buffer.seek(0)
         return buffer
 
@@ -39,9 +40,7 @@ class TestPhotoPlugin:
         # Setup mock response
         mock_response = Mock()
         mock_response.text = "This is a red square image."
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         # Execute
         result = await generate_text_for_image(mock_settings, sample_image_buffer)
@@ -52,11 +51,11 @@ class TestPhotoPlugin:
 
         # Check the call arguments
         call_args = mock_settings.genai_client.aio.models.generate_content.call_args
-        assert call_args.kwargs['model'] == "test-model"
-        assert call_args.kwargs['config'] == mock_settings.genconfig
+        assert call_args.kwargs["model"] == "test-model"
+        assert call_args.kwargs["config"] == mock_settings.genconfig
 
         # Check contents
-        contents = call_args.kwargs['contents']
+        contents = call_args.kwargs["contents"]
         assert len(contents) == 2
         assert contents[0] == PROMPT
         assert isinstance(contents[1], Image.Image)
@@ -64,21 +63,19 @@ class TestPhotoPlugin:
     @pytest.mark.asyncio
     async def test_generate_text_for_image_different_formats(self, mock_settings):
         """Test with different image formats."""
-        formats = ['PNG', 'JPEG', 'BMP']
+        formats = ["PNG", "JPEG", "BMP"]
 
         mock_response = Mock()
         mock_response.text = "Test image description."
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         for img_format in formats:
             # Create image in specific format
-            img = Image.new('RGB', (10, 10), color='blue')
+            img = Image.new("RGB", (10, 10), color="blue")
             buffer = io.BytesIO()
 
             # BMP doesn't support all save options
-            if img_format == 'BMP':
+            if img_format == "BMP":
                 img.save(buffer, format=img_format)
             else:
                 img.save(buffer, format=img_format)
@@ -97,9 +94,7 @@ class TestPhotoPlugin:
         # Setup mock response with whitespace
         mock_response = Mock()
         mock_response.text = "  This has whitespace.  \n"
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         # Execute
         result = await generate_text_for_image(mock_settings, sample_image_buffer)

@@ -1,15 +1,13 @@
-from typing import Dict, List, Optional, Any, Union
-from pathlib import Path
-import yaml
 import os
 from dataclasses import dataclass, field
-
-from telega.settings import Settings
-
-
-from mcp import ClientSession, StdioServerParameters, stdio_client
+from pathlib import Path
+from typing import Any
 
 import structlog
+import yaml
+from mcp import ClientSession, StdioServerParameters, stdio_client
+
+from telega.settings import Settings
 
 
 @dataclass
@@ -19,8 +17,8 @@ class MCPConfiguration:
     name: str
     type: str
     enabled: bool = True
-    config: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -39,9 +37,9 @@ class MCPConfiguration:
         Raises:
             ValueError: If no command is specified for the MCP
         """
-        envs: Dict[str, str] = self.config.get("envs", {})
+        envs: dict[str, str] = self.config.get("envs", {})
         if not envs:
-            env_keys: List[str] = self.config.get("env_keys", [])
+            env_keys: list[str] = self.config.get("env_keys", [])
             for key in env_keys:
                 envs[key] = os.environ.get(key, "")
 
@@ -50,9 +48,7 @@ class MCPConfiguration:
         if not command:
             raise ValueError(f"No command specified for MCP '{self.name}'")
 
-        return StdioServerParameters(
-            command=command, args=self.config.get("args", []), env=envs
-        )
+        return StdioServerParameters(command=command, args=self.config.get("args", []), env=envs)
 
 
 class MCPClient:
@@ -74,7 +70,7 @@ class MCPClient:
         self.server_params: StdioServerParameters = server_params
         self.logger: structlog.BoundLogger = logger
 
-    async def get_response(self, settings: Settings, prompt: str) -> Optional[str]:
+    async def get_response(self, settings: Settings, prompt: str) -> str | None:
         """
         Get a response from the MCP.
 
@@ -85,46 +81,40 @@ class MCPClient:
         Returns:
             Response text from the MCP or None if failed
         """
-        async with stdio_client(self.server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
+        async with stdio_client(self.server_params) as (read, write), ClientSession(read, write) as session:
+            await session.initialize()
 
-                genconfig = settings.genconfig.copy()
-                if not genconfig.tools:
-                    tools: List[Any] = []
-                else:
-                    tools = list(genconfig.tools)
-                tools.append(session)
-                genconfig.tools = tools
-                genconfig.temperature = 0
+            genconfig = settings.genconfig.copy()
+            if not genconfig.tools:
+                tools: list[Any] = []
+            else:
+                tools = list(genconfig.tools)
+            tools.append(session)
+            genconfig.tools = tools
+            genconfig.temperature = 0
 
-                # Check if env var has a custom prompt for this MCP
-                custom_prompt: Optional[str] = os.getenv(f"MCP_{self.name}_PROMPT")
-                if custom_prompt:
-                    prompt = f"{custom_prompt}\n{prompt}"
-                else:
-                    prompt = prompt.strip()
+            # Check if env var has a custom prompt for this MCP
+            custom_prompt: str | None = os.getenv(f"MCP_{self.name}_PROMPT")
+            prompt = f"{custom_prompt}\n{prompt}" if custom_prompt else prompt.strip()
 
-                self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
-                response = await settings.genai_client.aio.models.generate_content(
-                    model=settings.model_name,
-                    contents=[
-                        prompt,
-                    ],
-                    config=genconfig,
+            self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
+            response = await settings.genai_client.aio.models.generate_content(
+                model=settings.model_name,
+                contents=[
+                    prompt,
+                ],
+                config=genconfig,
+            )
+            self.logger.debug(f"MCP {self.name} response: {response}")
+            try:
+                return (
+                    response.candidates[0]  # pyright: ignore
+                    .content.parts[0]  # pyright: ignore
+                    .text.strip()  # pyright: ignore
                 )
-                self.logger.debug(f"MCP {self.name} response: {response}")
-                try:
-                    return (
-                        response.candidates[0] # pyright: ignore
-                        .content.parts[0] # pyright: ignore
-                        .text.strip()  # pyright: ignore
-                    )
-                except Exception as e:
-                    self.logger.error(
-                        f"MCP {self.name} failed to generate a response: {e}"
-                    )
-                    return None
+            except Exception as e:
+                self.logger.error(f"MCP {self.name} failed to generate a response: {e}")
+                return None
 
 
 class MCPConfigReader:
@@ -144,8 +134,8 @@ class MCPConfigReader:
         """
         self.logger: structlog.BoundLogger = settings.logger
         self.config_path: Path = Path(settings.mcp_config_path)
-        self.mcps: Dict[str, MCPConfiguration] = {}
-        self._raw_config: Dict[str, Any] = {}
+        self.mcps: dict[str, MCPConfiguration] = {}
+        self._raw_config: dict[str, Any] = {}
 
     def load_config(self) -> None:
         """
@@ -156,13 +146,11 @@ class MCPConfigReader:
             yaml.YAMLError: If YAML parsing fails
         """
         if not self.config_path.exists():
-            self.logger.warning(
-                f"MCP configuration file not found at {self.config_path}"
-            )
+            self.logger.warning(f"MCP configuration file not found at {self.config_path}")
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
 
         try:
-            with open(self.config_path, "r", encoding="utf-8") as file:
+            with open(self.config_path, encoding="utf-8") as file:
                 self._raw_config = yaml.safe_load(file) or {}
 
             self.logger.info(f"Loaded MCP configuration from {self.config_path}")
@@ -184,9 +172,7 @@ class MCPConfigReader:
         """
         self.mcps.clear()
 
-        mcp_configs: Dict[str, Any] = self._raw_config[
-            "extensions"
-        ]  # Extensions format
+        mcp_configs: dict[str, Any] = self._raw_config["extensions"]  # Extensions format
 
         if not isinstance(mcp_configs, dict):
             raise ValueError("MCP configuration must be a dictionary")
@@ -198,11 +184,9 @@ class MCPConfigReader:
                 self.logger.debug(f"Loaded MCP configuration: {name}")
             except Exception as e:
                 self.logger.error(f"Failed to parse MCP '{name}': {e}")
-                raise ValueError(f"Invalid MCP configuration for '{name}': {e}")
+                raise ValueError(f"Invalid MCP configuration for '{name}'") from e
 
-    def _create_mcp_configuration(
-        self, name: str, config: Union[str, Dict[str, Any]]
-    ) -> MCPConfiguration:
+    def _create_mcp_configuration(self, name: str, config: str | dict[str, Any]) -> MCPConfiguration:
         """
         Create an MCP configuration object from raw config data.
 
@@ -221,15 +205,13 @@ class MCPConfigReader:
             return MCPConfiguration(name=name, type=config)
 
         if not isinstance(config, dict):
-            raise ValueError(
-                f"MCP configuration for '{name}' must be a dictionary or string"
-            )
+            raise ValueError(f"MCP configuration for '{name}' must be a dictionary or string")
 
         # Extract configuration fields
         mcp_type: str = config.get("type", config.get("command", ""))
         enabled: bool = config.get("enabled", True)
-        mcp_config: Dict[str, Any] = config.get("config", {})
-        metadata: Dict[str, Any] = config.get("metadata", {})
+        mcp_config: dict[str, Any] = config.get("config", {})
+        metadata: dict[str, Any] = config.get("metadata", {})
 
         # Handle extensions format
         if "cmd" in config:
@@ -265,7 +247,7 @@ class MCPConfigReader:
             metadata=metadata,
         )
 
-    def get_mcp_configuration(self, name: str) -> Optional[MCPConfiguration]:
+    def get_mcp_configuration(self, name: str) -> MCPConfiguration | None:
         """
         Get a specific MCP configuration by name.
 
@@ -277,7 +259,7 @@ class MCPConfigReader:
         """
         return self.mcps.get(name)
 
-    def get_enabled_mcps(self) -> Dict[str, MCPConfiguration]:
+    def get_enabled_mcps(self) -> dict[str, MCPConfiguration]:
         """
         Get all enabled MCP configurations.
 
@@ -286,7 +268,7 @@ class MCPConfigReader:
         """
         return {name: mcp for name, mcp in self.mcps.items() if mcp.enabled}
 
-    def get_mcps_by_type(self, mcp_type: str) -> List[MCPConfiguration]:
+    def get_mcps_by_type(self, mcp_type: str) -> list[MCPConfiguration]:
         """
         Get all MCPs of a specific type.
 
@@ -298,7 +280,7 @@ class MCPConfigReader:
         """
         return [mcp for mcp in self.mcps.values() if mcp.type == mcp_type]
 
-    def list_mcp_names(self) -> List[str]:
+    def list_mcp_names(self) -> list[str]:
         """
         Get a list of all MCP names.
 
@@ -329,16 +311,12 @@ class MCPConfigReader:
             if not mcp.name or not mcp.type:
                 raise ValueError(f"MCP '{name}' has invalid configuration")
 
-        self.logger.info(
-            f"Configuration validated successfully. {len(self.mcps)} MCPs loaded."
-        )
+        self.logger.info(f"Configuration validated successfully. {len(self.mcps)} MCPs loaded.")
         return True
 
     def __repr__(self) -> str:
         """Return string representation of MCPConfigReader."""
-        return (
-            f"MCPConfigReader(config_path='{self.config_path}', mcps={len(self.mcps)})"
-        )
+        return f"MCPConfigReader(config_path='{self.config_path}', mcps={len(self.mcps)})"
 
     def __len__(self) -> int:
         """Return number of MCPs configured."""

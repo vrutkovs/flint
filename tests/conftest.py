@@ -2,15 +2,15 @@
 
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock
+
+import pytest
+import structlog
+from google import genai
 
 # Add src directory to Python path for imports
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
-
-import pytest
-from unittest.mock import Mock, AsyncMock
-import structlog
-from google import genai
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def sample_config():
 @pytest.fixture
 def mock_telegram_update():
     """Create a mock Telegram update object."""
-    from telegram import Update, Message, User, Chat
+    from telegram import Chat, Message, Update, User
 
     update = Mock(spec=Update)
     update.update_id = 12345
@@ -101,4 +101,4 @@ def async_mock():
 
 
 # Configure pytest-asyncio
-pytest_plugins = ('pytest_asyncio',)
+pytest_plugins = ("pytest_asyncio",)

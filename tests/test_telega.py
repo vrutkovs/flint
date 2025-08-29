@@ -2,15 +2,16 @@
 
 import io
 import os
-import yaml
+from unittest.mock import AsyncMock, Mock, mock_open, patch
+
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, mock_open
-from telegram import Update, Message, User, Chat, PhotoSize, Document, Video, Sticker, Animation
+import yaml
+from telegram import Animation, Chat, Document, Message, PhotoSize, Sticker, Update, User, Video
 from telegram.ext import ContextTypes
 
+from src.plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
 from src.telega.main import Telega
 from src.telega.settings import Settings
-from src.plugins.mcp import MCPConfigReader, MCPConfiguration, MCPClient, StdioServerParameters
 
 
 class TestTelega:
@@ -162,10 +163,7 @@ class TestTelega:
 
         assert result is False
         telega.settings.logger.info.assert_called_with(
-            "Unexpected user",
-            user_filter=["alloweduser"],
-            user="testuser",
-            update_id=12345
+            "Unexpected user", user_filter=["alloweduser"], user="testuser", update_id=12345
         )
 
     @pytest.mark.asyncio
@@ -177,9 +175,7 @@ class TestTelega:
         result = await telega.is_user_allowed(mock_update)
 
         assert result is False
-        telega.settings.logger.info.assert_called_with(
-            "Bot message, ignoring", update_id=12345
-        )
+        telega.settings.logger.info.assert_called_with("Bot message, ignoring", update_id=12345)
 
     @pytest.mark.asyncio
     async def test_reply_to_message(self, telega, mock_update):
@@ -189,10 +185,7 @@ class TestTelega:
 
         await telega.reply_to_message(mock_update, "Test reply")
 
-        mock_update.message.reply_text.assert_called_once_with(
-            text="Test reply",
-            reply_to_message_id=999
-        )
+        mock_update.message.reply_text.assert_called_once_with(text="Test reply", reply_to_message_id=999)
 
     @pytest.mark.asyncio
     async def test_reply_to_message_no_message(self, telega, mock_update):
@@ -231,9 +224,7 @@ class TestTelega:
 
         await telega.handle_photo_message(mock_update, mock_context)
 
-        telega.settings.logger.debug.assert_called_with(
-            "Unsupported message type", update_id=12345
-        )
+        telega.settings.logger.debug.assert_called_with("Unsupported message type", update_id=12345)
 
     @pytest.mark.asyncio
     async def test_handle_photo_message_user_not_allowed(self, telega, mock_update, mock_context):
@@ -264,11 +255,7 @@ class TestTelega:
         """Test listing MCPs command."""
         telega.is_user_allowed = AsyncMock(return_value=True)
         telega.reply_to_message = AsyncMock()
-        telega.mcps.get_enabled_mcps.return_value = {
-            "mcp1": {},
-            "mcp2": {},
-            "mcp3": {}
-        }
+        telega.mcps.get_enabled_mcps.return_value = {"mcp1": {}, "mcp2": {}, "mcp3": {}}
 
         await telega.handle_list_mcps_message(mock_update, mock_context)
 
@@ -329,9 +316,7 @@ class TestTelega:
         await telega.handle_text_message(mock_update, mock_context)
 
         telega.settings.genai_client.aio.models.generate_content.assert_called_once_with(
-            model=telega.settings.model_name,
-            contents=["Hello bot"],
-            config=telega.settings.genconfig
+            model=telega.settings.model_name, contents=["Hello bot"], config=telega.settings.genconfig
         )
         telega.reply_to_message.assert_called_once_with(mock_update, "Hello human!")
 
@@ -360,10 +345,7 @@ class TestTelega:
         mock_qa_chain = Mock()
         mock_qa_chain.invoke.return_value = {
             "result": "The capital is Paris.",
-            "source_documents": [
-                Mock(metadata={"source": "doc1.pdf"}),
-                Mock(metadata={"source": "doc2.pdf"})
-            ]
+            "source_documents": [Mock(metadata={"source": "doc1.pdf"}), Mock(metadata={"source": "doc2.pdf"})],
         }
         telega.settings.qa_chain = mock_qa_chain
 
@@ -485,10 +467,7 @@ class TestTelega:
 
         # Setup RAG chain
         mock_qa_chain = Mock()
-        mock_qa_chain.invoke.return_value = {
-            "result": "The capital is Paris.",
-            "source_documents": []
-        }
+        mock_qa_chain.invoke.return_value = {"result": "The capital is Paris.", "source_documents": []}
         telega.settings.qa_chain = mock_qa_chain
 
         # Setup GenAI response
@@ -584,14 +563,10 @@ class TestMCPConfigReader:
                     "envs": {"KEY1": "value1"},
                     "description": "Test MCP",
                     "enabled": True,
-                    "type": "stdio"
+                    "type": "stdio",
                 },
-                "disabled_mcp": {
-                    "cmd": "disabled-command",
-                    "enabled": False,
-                    "type": "stdio"
-                },
-                "simple_mcp": "simple-type"
+                "disabled_mcp": {"cmd": "disabled-command", "enabled": False, "type": "stdio"},
+                "simple_mcp": "simple-type",
             }
         }
 
@@ -614,26 +589,30 @@ class TestMCPConfigReader:
 
     def test_load_config_yaml_error(self, mcp_reader, mock_settings):
         """Test loading config with invalid YAML."""
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", mock_open(read_data="invalid: yaml: content:")):
-                with patch("yaml.safe_load", side_effect=yaml.YAMLError("Invalid YAML")):
-                    with pytest.raises(yaml.YAMLError):
-                        mcp_reader.load_config()
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data="invalid: yaml: content:")),
+            patch("yaml.safe_load", side_effect=yaml.YAMLError("Invalid YAML")),
+        ):
+            with pytest.raises(yaml.YAMLError):
+                mcp_reader.load_config()
 
-                    mock_settings.logger.error.assert_called()
+            mock_settings.logger.error.assert_called()
 
     def test_load_config_success(self, mcp_reader, mock_settings, sample_config):
         """Test successful config loading."""
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("builtins.open", mock_open()):
-                with patch("yaml.safe_load", return_value=sample_config):
-                    mcp_reader.load_config()
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open()),
+            patch("yaml.safe_load", return_value=sample_config),
+        ):
+            mcp_reader.load_config()
 
-                    assert len(mcp_reader.mcps) == 3
-                    assert "test_mcp" in mcp_reader.mcps
-                    assert "disabled_mcp" in mcp_reader.mcps
-                    assert "simple_mcp" in mcp_reader.mcps
-                    mock_settings.logger.info.assert_called()
+            assert len(mcp_reader.mcps) == 3
+            assert "test_mcp" in mcp_reader.mcps
+            assert "disabled_mcp" in mcp_reader.mcps
+            assert "simple_mcp" in mcp_reader.mcps
+            mock_settings.logger.info.assert_called()
 
     def test_parse_configuration_invalid_format(self, mcp_reader):
         """Test parsing invalid configuration format."""
@@ -644,11 +623,7 @@ class TestMCPConfigReader:
 
     def test_parse_configuration_invalid_mcp(self, mcp_reader, mock_settings):
         """Test parsing configuration with invalid MCP."""
-        mcp_reader._raw_config = {
-            "extensions": {
-                "invalid_mcp": {"invalid_field": "value"}
-            }
-        }
+        mcp_reader._raw_config = {"extensions": {"invalid_mcp": {"invalid_field": "value"}}}
 
         with pytest.raises(ValueError, match="Invalid MCP configuration"):
             mcp_reader._parse_configuration()
@@ -669,7 +644,7 @@ class TestMCPConfigReader:
             "args": ["arg1"],
             "envs": {"KEY": "value"},
             "description": "Test MCP",
-            "type": "stdio"
+            "type": "stdio",
         }
 
         mcp = mcp_reader._create_mcp_configuration("test", config)
@@ -696,10 +671,7 @@ class TestMCPConfigReader:
         enabled_mcp = MCPConfiguration(name="enabled", type="type1", enabled=True)
         disabled_mcp = MCPConfiguration(name="disabled", type="type2", enabled=False)
 
-        mcp_reader.mcps = {
-            "enabled": enabled_mcp,
-            "disabled": disabled_mcp
-        }
+        mcp_reader.mcps = {"enabled": enabled_mcp, "disabled": disabled_mcp}
 
         result = mcp_reader.get_enabled_mcps()
 
@@ -713,11 +685,7 @@ class TestMCPConfigReader:
         mcp2 = MCPConfiguration(name="mcp2", type="type-b")
         mcp3 = MCPConfiguration(name="mcp3", type="type-a")
 
-        mcp_reader.mcps = {
-            "mcp1": mcp1,
-            "mcp2": mcp2,
-            "mcp3": mcp3
-        }
+        mcp_reader.mcps = {"mcp1": mcp1, "mcp2": mcp2, "mcp3": mcp3}
 
         result = mcp_reader.get_mcps_by_type("type-a")
 
@@ -728,11 +696,7 @@ class TestMCPConfigReader:
 
     def test_list_mcp_names(self, mcp_reader):
         """Test listing MCP names."""
-        mcp_reader.mcps = {
-            "mcp1": Mock(),
-            "mcp2": Mock(),
-            "mcp3": Mock()
-        }
+        mcp_reader.mcps = {"mcp1": Mock(), "mcp2": Mock(), "mcp3": Mock()}
 
         names = mcp_reader.list_mcp_names()
 
@@ -743,7 +707,7 @@ class TestMCPConfigReader:
 
     def test_reload_config(self, mcp_reader):
         """Test reloading configuration."""
-        with patch.object(mcp_reader, 'load_config') as mock_load:
+        with patch.object(mcp_reader, "load_config") as mock_load:
             mcp_reader.reload_config()
             mock_load.assert_called_once()
 
@@ -760,7 +724,7 @@ class TestMCPConfigReader:
         """Test validating valid configuration."""
         mcp_reader.mcps = {
             "test1": MCPConfiguration(name="test1", type="type1"),
-            "test2": MCPConfiguration(name="test2", type="type2")
+            "test2": MCPConfiguration(name="test2", type="type2"),
         }
 
         result = mcp_reader.validate_configuration()
@@ -806,11 +770,7 @@ class TestMCPConfigReader:
     @pytest.mark.asyncio
     async def test_mcp_configuration_get_server_params(self):
         """Test MCPConfiguration get_server_params method."""
-        config = {
-            "cmd": "test-command",
-            "args": ["arg1", "arg2"],
-            "envs": {"KEY1": "value1"}
-        }
+        config = {"cmd": "test-command", "args": ["arg1", "arg2"], "envs": {"KEY1": "value1"}}
 
         mcp = MCPConfiguration(name="test", type="test-type", config=config)
 
@@ -824,10 +784,7 @@ class TestMCPConfigReader:
     async def test_mcp_configuration_get_server_params_env_keys(self):
         """Test get_server_params with env_keys."""
         with patch.dict(os.environ, {"TEST_KEY": "test_value"}):
-            config = {
-                "cmd": "test-command",
-                "env_keys": ["TEST_KEY", "MISSING_KEY"]
-            }
+            config = {"cmd": "test-command", "env_keys": ["TEST_KEY", "MISSING_KEY"]}
 
             mcp = MCPConfiguration(name="test", type="test-type", config=config)
 
@@ -854,15 +811,7 @@ class TestMCPConfigReader:
     def test_parse_configuration_with_metadata(self, mcp_reader):
         """Test parsing configuration with metadata."""
         mcp_reader._raw_config = {
-            "extensions": {
-                "test_mcp": {
-                    "type": "test-type",
-                    "metadata": {
-                        "author": "Test Author",
-                        "version": "1.0.0"
-                    }
-                }
-            }
+            "extensions": {"test_mcp": {"type": "test-type", "metadata": {"author": "Test Author", "version": "1.0.0"}}}
         }
 
         mcp_reader._parse_configuration()
@@ -926,27 +875,19 @@ class TestMCPClient:
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
         mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(
-            return_value="Test response"
-        )
+        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Test response")
 
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         with patch("src.plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
-            mock_stdio.return_value.__aenter__ = AsyncMock(
-                return_value=(mock_read, mock_write)
-            )
+            mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
             with patch("src.plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
-                mock_session_class.return_value.__aenter__ = AsyncMock(
-                    return_value=mock_session
-                )
+                mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
                 result = await mcp_client.get_response(mock_settings, "test prompt")
 
@@ -962,35 +903,29 @@ class TestMCPClient:
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
         mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(
-            return_value="Custom response"
-        )
+        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Custom response")
 
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch.dict(os.environ, {"MCP_test_mcp_PROMPT": "Custom prefix"}):
-            with patch("src.plugins.mcp.stdio_client") as mock_stdio:
-                mock_read = AsyncMock()
-                mock_write = AsyncMock()
-                mock_stdio.return_value.__aenter__ = AsyncMock(
-                    return_value=(mock_read, mock_write)
-                )
+        with (
+            patch.dict(os.environ, {"MCP_test_mcp_PROMPT": "Custom prefix"}),
+            patch("src.plugins.mcp.stdio_client") as mock_stdio,
+        ):
+            mock_read = AsyncMock()
+            mock_write = AsyncMock()
+            mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
-                with patch("src.plugins.mcp.ClientSession") as mock_session_class:
-                    mock_session = AsyncMock()
-                    mock_session.initialize = AsyncMock()
-                    mock_session_class.return_value.__aenter__ = AsyncMock(
-                        return_value=mock_session
-                    )
+            with patch("src.plugins.mcp.ClientSession") as mock_session_class:
+                mock_session = AsyncMock()
+                mock_session.initialize = AsyncMock()
+                mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
-                    result = await mcp_client.get_response(mock_settings, "test prompt")
+                result = await mcp_client.get_response(mock_settings, "test prompt")
 
-                    assert result == "Custom response"
-                    # Check that custom prompt was used
-                    call_args = mock_settings.genai_client.aio.models.generate_content.call_args
-                    assert call_args.kwargs["contents"][0] == "Custom prefix\ntest prompt"
+                assert result == "Custom response"
+                # Check that custom prompt was used
+                call_args = mock_settings.genai_client.aio.models.generate_content.call_args
+                assert call_args.kwargs["contents"][0] == "Custom prefix\ntest prompt"
 
     @pytest.mark.asyncio
     async def test_get_response_with_existing_tools(self, mcp_client, mock_settings):
@@ -1005,27 +940,19 @@ class TestMCPClient:
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
         mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(
-            return_value="Response with tools"
-        )
+        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Response with tools")
 
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         with patch("src.plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
-            mock_stdio.return_value.__aenter__ = AsyncMock(
-                return_value=(mock_read, mock_write)
-            )
+            mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
             with patch("src.plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
-                mock_session_class.return_value.__aenter__ = AsyncMock(
-                    return_value=mock_session
-                )
+                mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
                 result = await mcp_client.get_response(mock_settings, "test prompt")
 
@@ -1043,23 +970,17 @@ class TestMCPClient:
         mock_response = Mock()
         mock_response.candidates = None  # This will cause an exception
 
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         with patch("src.plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
-            mock_stdio.return_value.__aenter__ = AsyncMock(
-                return_value=(mock_read, mock_write)
-            )
+            mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
             with patch("src.plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
-                mock_session_class.return_value.__aenter__ = AsyncMock(
-                    return_value=mock_session
-                )
+                mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
                 result = await mcp_client.get_response(mock_settings, "test prompt")
 
@@ -1075,27 +996,19 @@ class TestMCPClient:
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
         mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(
-            return_value="Stripped response"
-        )
+        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Stripped response")
 
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         with patch("src.plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
-            mock_stdio.return_value.__aenter__ = AsyncMock(
-                return_value=(mock_read, mock_write)
-            )
+            mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
             with patch("src.plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
-                mock_session_class.return_value.__aenter__ = AsyncMock(
-                    return_value=mock_session
-                )
+                mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
                 result = await mcp_client.get_response(mock_settings, "  test prompt  ")
 
@@ -1112,27 +1025,19 @@ class TestMCPClient:
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
         mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(
-            return_value="Test response"
-        )
+        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Test response")
 
-        mock_settings.genai_client.aio.models.generate_content = AsyncMock(
-            return_value=mock_response
-        )
+        mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
         with patch("src.plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
-            mock_stdio.return_value.__aenter__ = AsyncMock(
-                return_value=(mock_read, mock_write)
-            )
+            mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
             with patch("src.plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
-                mock_session_class.return_value.__aenter__ = AsyncMock(
-                    return_value=mock_session
-                )
+                mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
 
                 await mcp_client.get_response(mock_settings, "test prompt")
 

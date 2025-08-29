@@ -148,11 +148,11 @@ class TestMyFeature:
     def setup_data(self):
         """Setup test data."""
         return {"key": "value"}
-    
+
     def test_sync_method(self, setup_data):
         """Test synchronous method."""
         assert setup_data["key"] == "value"
-    
+
     @pytest.mark.asyncio
     async def test_async_method(self):
         """Test asynchronous method."""

@@ -1,22 +1,20 @@
+import datetime
 import os
 import sys
-from typing import Final, Optional
-import datetime
-from dotenv import load_dotenv, find_dotenv
+from typing import Final
 
 import structlog
-from telegram.ext import Application, MessageHandler, CommandHandler, filters
+from dotenv import find_dotenv, load_dotenv
 from google import genai
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
+from plugins.schedule import ScheduleData, send_agenda
 from telega.main import Telega
 from telega.settings import Settings
-from plugins.schedule import send_agenda, ScheduleData
 
 load_dotenv(find_dotenv())
 
-DEFAULT_SYSTEM_INSTRUCTIONS: Final[
-    str
-] = """
+DEFAULT_SYSTEM_INSTRUCTIONS: Final[str] = """
 You are a helpful assistant.
 
 Adopt the following persona for your response: The city's a cold, hard
@@ -32,50 +30,48 @@ Always translate the response back to the user's language, including tool output
 """
 
 # Settings are read from environment variables
-TOKEN: Final[Optional[str]] = os.getenv("TELEGRAM_TOKEN")
+TOKEN: Final[str | None] = os.getenv("TELEGRAM_TOKEN")
 if not TOKEN:
     print("TELEGRAM_TOKEN environment variable is required")
     sys.exit(1)
 
-CHAT_ID: Final[Optional[str]] = os.getenv("TELEGRAM_CHAT_ID")
+CHAT_ID: Final[str | None] = os.getenv("TELEGRAM_CHAT_ID")
 if not CHAT_ID:
     print("TELEGRAM_CHAT_ID environment variable is required")
     sys.exit(1)
 
-API_KEY: Optional[str] = os.environ.get("GOOGLE_API_KEY")
+API_KEY: str | None = os.environ.get("GOOGLE_API_KEY")
 if not API_KEY:
     print("GOOGLE_API_KEY environment variable is required")
     sys.exit(1)
 
-MODEL_NAME: Optional[str] = os.environ.get("MODEL_NAME")
+MODEL_NAME: str | None = os.environ.get("MODEL_NAME")
 if not MODEL_NAME:
     print("MODEL_NAME environment variable is required")
     sys.exit(1)
 
-MCP_CONFIG_PATH: Optional[str] = os.environ.get("MCP_CONFIG_PATH")
+MCP_CONFIG_PATH: str | None = os.environ.get("MCP_CONFIG_PATH")
 if not MCP_CONFIG_PATH:
     print("MCP_CONFIG_PATH environment variable is required")
     sys.exit(1)
 
-SUMMARY_MCP_CALENDAR_NAME: Optional[str] = os.environ.get("SUMMARY_MCP_CALENDAR_NAME")
+SUMMARY_MCP_CALENDAR_NAME: str | None = os.environ.get("SUMMARY_MCP_CALENDAR_NAME")
 if not SUMMARY_MCP_CALENDAR_NAME:
     print("SUMMARY_MCP_CALENDAR_NAME environment variable is required")
     sys.exit(1)
 
-SUMMARY_MCP_WEATHER_NAME: Optional[str] = os.environ.get("SUMMARY_MCP_WEATHER_NAME")
+SUMMARY_MCP_WEATHER_NAME: str | None = os.environ.get("SUMMARY_MCP_WEATHER_NAME")
 if not SUMMARY_MCP_WEATHER_NAME:
     print("SUMMARY_MCP_WEATHER_NAME environment variable is required")
     sys.exit(1)
 
-SYSTEM_INSTRUCTIONS: str = os.environ.get(
-    "SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS
-)
+SYSTEM_INSTRUCTIONS: str = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
-RAG_EMBEDDING_MODEL: Optional[str] = os.environ.get("RAG_EMBEDDING_MODEL")
-RAG_LOCATION: Optional[str] = os.environ.get("RAG_LOCATION")
-RAG_GOOGLE_PROJECT_ID: Optional[str] = os.environ.get("RAG_GOOGLE_PROJECT_ID")
+RAG_EMBEDDING_MODEL: str | None = os.environ.get("RAG_EMBEDDING_MODEL")
+RAG_LOCATION: str | None = os.environ.get("RAG_LOCATION")
+RAG_GOOGLE_PROJECT_ID: str | None = os.environ.get("RAG_GOOGLE_PROJECT_ID")
 
-SCHEDULED_AGENDA_TIME: Optional[str] = os.environ.get("SCHEDULED_AGENDA_TIME")
+SCHEDULED_AGENDA_TIME: str | None = os.environ.get("SCHEDULED_AGENDA_TIME")
 TZ: str = os.getenv("TZ", "UTC")
 USER_FILTER: list[str] = os.environ.get("USER_FILTER", "").split(",")
 
@@ -134,9 +130,7 @@ for mcp_name in telega.mcps.get_enabled_mcps():
 
 app.add_handler(CommandHandler("list_mcps", telega.handle_list_mcps_message))
 app.add_handler(CommandHandler("rag", telega.handle_rag_request))
-app.add_handler(
-    MessageHandler(filters.TEXT & ~filters.COMMAND, telega.handle_text_message)
-)
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, telega.handle_text_message))
 log.info("Registered handler for Gemini")
 
 log.info("Message handlers registered")
@@ -151,12 +145,8 @@ if SCHEDULED_AGENDA_TIME:
     hour: int
     minute: int
     hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(":"))
-    schedule_time: datetime.time = datetime.time(
-        hour=hour, minute=minute, tzinfo=settings.timezone
-    )
-    scheduleData: ScheduleData = ScheduleData(
-        settings=settings, genai_client=genai_client
-    )
+    schedule_time: datetime.time = datetime.time(hour=hour, minute=minute, tzinfo=settings.timezone)
+    scheduleData: ScheduleData = ScheduleData(settings=settings, genai_client=genai_client)
 
     job_queue.run_daily(
         send_agenda,

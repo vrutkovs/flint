@@ -1,20 +1,21 @@
 """Unit tests for the schedule plugin."""
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-import pytz
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+import pytz
+from google import genai
+from telegram.ext import ContextTypes
+
+from src.plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
 from src.plugins.schedule import (
+    CALENDAR_MCP_PROMPT,
+    PROMPT_TEMPLATE,
+    WEATHER_MCP_PROMPT,
     ScheduleData,
     send_agenda,
-    PROMPT_TEMPLATE,
-    CALENDAR_MCP_PROMPT,
-    WEATHER_MCP_PROMPT,
 )
 from src.telega.settings import Settings
-from src.plugins.mcp import MCPConfigReader, MCPClient, MCPConfiguration, StdioServerParameters
-from telegram.ext import ContextTypes
-from google import genai
 
 
 class TestScheduleData:
@@ -77,14 +78,10 @@ class TestSendAgenda:
         return settings
 
     @pytest.mark.asyncio
-    @patch('src.plugins.schedule.MCPConfigReader')
-    @patch('src.plugins.schedule.MCPClient')
+    @patch("src.plugins.schedule.MCPConfigReader")
+    @patch("src.plugins.schedule.MCPClient")
     async def test_send_agenda_success(
-        self,
-        mock_mcp_client_class,
-        mock_mcp_reader_class,
-        mock_context,
-        mock_schedule_data
+        self, mock_mcp_client_class, mock_mcp_reader_class, mock_context, mock_schedule_data
     ):
         """Test successful agenda sending."""
         # Setup context
@@ -107,7 +104,7 @@ class TestSendAgenda:
 
         mock_mcp_reader.get_mcp_configuration.side_effect = lambda name: {
             "calendar_mcp": mock_calendar_config,
-            "weather_mcp": mock_weather_config
+            "weather_mcp": mock_weather_config,
         }.get(name)
 
         # Setup MCP clients
@@ -129,27 +126,21 @@ class TestSendAgenda:
 
         # Verify
         mock_context.bot.send_message.assert_called_once_with(
-            chat_id=123456789,
-            text="Good morning! The weather is sunny at 25°C. You have a meeting at 10 AM."
+            chat_id=123456789, text="Good morning! The weather is sunny at 25°C. You have a meeting at 10 AM."
         )
 
         # Verify MCP clients were called with correct prompts
         mock_calendar_client.get_response.assert_called_once()
         call_args = mock_calendar_client.get_response.call_args
-        assert CALENDAR_MCP_PROMPT in call_args.kwargs['prompt']
+        assert CALENDAR_MCP_PROMPT in call_args.kwargs["prompt"]
 
         mock_weather_client.get_response.assert_called_once()
         call_args = mock_weather_client.get_response.call_args
-        assert WEATHER_MCP_PROMPT in call_args.kwargs['prompt']
+        assert WEATHER_MCP_PROMPT in call_args.kwargs["prompt"]
 
     @pytest.mark.asyncio
-    @patch('src.plugins.schedule.MCPConfigReader')
-    async def test_send_agenda_mcp_error(
-        self,
-        mock_mcp_reader_class,
-        mock_context,
-        mock_schedule_data
-    ):
+    @patch("src.plugins.schedule.MCPConfigReader")
+    async def test_send_agenda_mcp_error(self, mock_mcp_reader_class, mock_context, mock_schedule_data):
         """Test agenda sending when MCP fails."""
         mock_context.job.data = mock_schedule_data
         mock_context.job.chat_id = 123456789
@@ -169,14 +160,10 @@ class TestSendAgenda:
         mock_schedule_data.settings.logger.error.assert_called()
 
     @pytest.mark.asyncio
-    @patch('src.plugins.schedule.MCPConfigReader')
-    @patch('src.plugins.schedule.MCPClient')
+    @patch("src.plugins.schedule.MCPConfigReader")
+    @patch("src.plugins.schedule.MCPClient")
     async def test_send_agenda_empty_response(
-        self,
-        mock_mcp_client_class,
-        mock_mcp_reader_class,
-        mock_context,
-        mock_schedule_data
+        self, mock_mcp_client_class, mock_mcp_reader_class, mock_context, mock_schedule_data
     ):
         """Test agenda sending with empty MCP responses."""
         mock_context.job.data = mock_schedule_data
@@ -197,7 +184,7 @@ class TestSendAgenda:
 
         mock_mcp_reader.get_mcp_configuration.side_effect = lambda name: {
             "calendar_mcp": mock_calendar_config,
-            "weather_mcp": mock_weather_config
+            "weather_mcp": mock_weather_config,
         }.get(name)
 
         # Setup MCP clients with empty responses
@@ -221,14 +208,10 @@ class TestSendAgenda:
         mock_context.bot.send_message.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('src.plugins.schedule.MCPConfigReader')
-    @patch('src.plugins.schedule.MCPClient')
+    @patch("src.plugins.schedule.MCPConfigReader")
+    @patch("src.plugins.schedule.MCPClient")
     async def test_send_agenda_genai_error(
-        self,
-        mock_mcp_client_class,
-        mock_mcp_reader_class,
-        mock_context,
-        mock_schedule_data
+        self, mock_mcp_client_class, mock_mcp_reader_class, mock_context, mock_schedule_data
     ):
         """Test agenda sending when GenAI fails."""
         mock_context.job.data = mock_schedule_data
@@ -248,7 +231,7 @@ class TestSendAgenda:
 
         mock_mcp_reader.get_mcp_configuration.side_effect = lambda name: {
             "calendar_mcp": mock_calendar_config,
-            "weather_mcp": mock_weather_config
+            "weather_mcp": mock_weather_config,
         }.get(name)
 
         mock_calendar_client = Mock(spec=MCPClient)
@@ -274,14 +257,10 @@ class TestSendAgenda:
         mock_context.bot.send_message.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch('src.plugins.schedule.MCPConfigReader')
-    @patch('src.plugins.schedule.MCPClient')
+    @patch("src.plugins.schedule.MCPConfigReader")
+    @patch("src.plugins.schedule.MCPClient")
     async def test_send_agenda_none_genai_response(
-        self,
-        mock_mcp_client_class,
-        mock_mcp_reader_class,
-        mock_context,
-        mock_schedule_data
+        self, mock_mcp_client_class, mock_mcp_reader_class, mock_context, mock_schedule_data
     ):
         """Test agenda sending when GenAI returns None."""
         mock_context.job.data = mock_schedule_data
@@ -301,7 +280,7 @@ class TestSendAgenda:
 
         mock_mcp_reader.get_mcp_configuration.side_effect = lambda name: {
             "calendar_mcp": mock_calendar_config,
-            "weather_mcp": mock_weather_config
+            "weather_mcp": mock_weather_config,
         }.get(name)
 
         mock_calendar_client = Mock(spec=MCPClient)

@@ -1,16 +1,16 @@
-from typing import Optional, Final
-from telega.settings import Settings
-from telegram.ext import ContextTypes
+from typing import Final
 
 import structlog
 from google import genai
+from telegram.ext import ContextTypes
 
 from plugins.mcp import (
-    MCPConfigReader,
     MCPClient,
+    MCPConfigReader,
     MCPConfiguration,
     StdioServerParameters,
 )
+from telega.settings import Settings
 
 
 class ScheduleData:
@@ -19,9 +19,7 @@ class ScheduleData:
         self.genai_client: genai.Client = genai_client
 
 
-PROMPT_TEMPLATE: Final[
-    str
-] = """
+PROMPT_TEMPLATE: Final[str] = """
 You are a helpful digital assistant.
 
 Your primary role is to provide a daily briefing.
@@ -73,7 +71,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
     if not job_data:
         print("Job data is missing")
         return
-    chat_id: Optional[int] = job.chat_id
+    chat_id: int | None = job.chat_id
     if not chat_id:
         print("Chat ID is missing")
         return
@@ -86,17 +84,13 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
     mcps: MCPConfigReader = MCPConfigReader(settings)
     mcps.reload_config()
 
-    weather_data: Optional[str] = None
-    weather_mcp_config: Optional[MCPConfiguration] = mcps.get_mcp_configuration(
-        settings.agenda_mcp_weather_name
-    )
+    weather_data: str | None = None
+    weather_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_weather_name)
     if not weather_mcp_config:
         settings.logger.error("Weather MCP configuration not found")
         weather_data = None
     else:
-        server_params: StdioServerParameters = (
-            await weather_mcp_config.get_server_params()
-        )
+        server_params: StdioServerParameters = await weather_mcp_config.get_server_params()
         weather_mcp: MCPClient = MCPClient(
             name=weather_mcp_config.name,
             server_params=server_params,
@@ -106,15 +100,11 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
             settings.logger.error("Weather MCP not found")
             weather_data = None
         else:
-            weather_data = await weather_mcp.get_response(
-                settings=settings, prompt=WEATHER_MCP_PROMPT
-            )
+            weather_data = await weather_mcp.get_response(settings=settings, prompt=WEATHER_MCP_PROMPT)
     settings.logger.info(f"Weather data fetched: {weather_data}")
 
-    calendar_data: Optional[str] = None
-    calendar_mcp_config: Optional[MCPConfiguration] = mcps.get_mcp_configuration(
-        settings.agenda_mcp_calendar_name
-    )
+    calendar_data: str | None = None
+    calendar_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
     if not calendar_mcp_config:
         settings.logger.error("Calendar MCP configuration not found")
         calendar_data = None
@@ -129,14 +119,10 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
             settings.logger.error("Calendar MCP not found")
             calendar_data = None
         else:
-            calendar_data = await calendar_mcp.get_response(
-                settings=settings, prompt=CALENDAR_MCP_PROMPT
-            )
+            calendar_data = await calendar_mcp.get_response(settings=settings, prompt=CALENDAR_MCP_PROMPT)
     settings.logger.info(f"Calendar data fetched: {calendar_data}")
 
-    prompt: str = PROMPT_TEMPLATE.format(
-        weather_data=weather_data, calendar_data=calendar_data
-    )
+    prompt: str = PROMPT_TEMPLATE.format(weather_data=weather_data, calendar_data=calendar_data)
     settings.logger.info(f"Prompt sent:\n{prompt}")
 
     response = await genai_client.aio.models.generate_content(
@@ -144,7 +130,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
         contents=[prompt],
         config=settings.genconfig,
     )
-    text: Optional[str] = response.text
+    text: str | None = response.text
     if not text:
         settings.logger.error("Empty response from AI when generating agenda")
         raise ValueError("Empty response from AI")

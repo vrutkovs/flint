@@ -21,7 +21,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["mypy>=1.11.0", "types-PyYAML>=6.0.12", "types-Pillow>=10.2.0"]
+dev = [
+    "mypy>=1.11.0",
+    "types-PyYAML>=6.0.12",
+    "types-Pillow>=10.2.0",
+    "pre-commit>=3.8.0",
+    "black>=24.10.0",
+    "ruff>=0.7.4",
+]
 test = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
@@ -64,7 +71,59 @@ module = [
 ]
 ignore_missing_imports = true
 
-[project.scripts]
-typecheck = "mypy src/"
-test = "pytest tests/ -v"
-test-cov = "pytest tests/ --cov=src --cov-report=term-missing"
+
+[tool.black]
+line-length = 120
+target-version = ['py313']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+extend-exclude = [".venv", ".mypy_cache", ".pytest_cache", ".ruff_cache"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "W191", # indentation contains tabs
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG001", "ARG002"] # Unused function arguments in tests
+
+[tool.ruff.lint.isort]
+known-third-party = [
+    "telegram",
+    "google",
+    "langchain",
+    "mcp",
+    "PIL",
+    "dotenv",
+    "structlog",
+    "unstructured",
+]

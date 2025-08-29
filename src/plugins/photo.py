@@ -10,9 +10,7 @@ PROMPT: Final[str] = (
 )
 
 
-async def generate_text_for_image(
-    settings: Settings, file_buffer: io.BytesIO, prompt: str = PROMPT
-) -> str:
+async def generate_text_for_image(settings: Settings, file_buffer: io.BytesIO, prompt: str = PROMPT) -> str:
     """
     Generate text description for an image using AI.
 
