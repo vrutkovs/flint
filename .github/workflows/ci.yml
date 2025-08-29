@@ -63,6 +63,9 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
+          file: ./coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: vrutkovs/flint
 

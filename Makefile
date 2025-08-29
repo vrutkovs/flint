@@ -25,7 +25,7 @@ test: ## Run unit tests
 	pytest tests/ -v
 
 test-cov: ## Run tests with coverage report
-	pytest tests/ --cov=src --junitxml=junit.xml -o junit_family=legacy
+	pytest tests/ --cov=src --cov-report xml:coverage.xml --junitxml=junit.xml -o junit_family=legacy
 
 typecheck: ## Run type checking with mypy
 	mypy src/
