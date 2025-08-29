@@ -266,7 +266,7 @@ class Telega:
 
     async def handle_text_message(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """
-        Handle text-only messages.
+        Handle text-only messages with conversation mode (contextual replies).
 
         Args:
             update: Telegram update object
@@ -281,17 +281,42 @@ class Telega:
 
         self.settings.logger.info("Processing text message", update_id=update.update_id)
 
+        user_text = update.message.text
+
+        # Helper to recursively extract reply chain texts
+        def extract_reply_chain(msg: Any) -> list[str]:
+            chain: list[str] = []
+            current = msg
+            count = 0
+            while current and getattr(current, "reply_to_message", None) and count < 10:
+                reply = current.reply_to_message
+                if getattr(reply, "text", None):
+                    chain.insert(0, reply.text)
+                current = reply
+                count += 1
+            return chain
+
+        # Extract context from reply chain if available
+        context_messages = []
+        if update.message and update.message.reply_to_message:
+            context_messages = extract_reply_chain(update.message)
+        # Always add current user message at the end
+        context_messages.append(user_text)
+
         try:
-            # Generate response using AI
+            # Generate response using AI with context
             response = await self.settings.genai_client.aio.models.generate_content(
                 model=self.settings.model_name,
-                contents=cast(list[str | Image.Image | Any | Any], [update.message.text]),
+                contents=cast(list[str | Image.Image | Any | Any], context_messages),
                 config=self.settings.genconfig,
             )
-            if not response.text:
+            reply_text = ""
+            if response.text:
+                reply_text = response.text.strip()
+
+            if not reply_text:
                 raise ValueError("Empty response from AI")
 
-            reply_text: str = response.text.strip()
             await self.reply_to_message(update, reply_text)
 
         except Exception as e:

@@ -20,7 +20,8 @@ Whether you're analyzing images, checking the weather, managing your calendar, o
 ### 🤖 AI Intelligence
 - **Vision Analysis**: Send photos for instant AI-powered descriptions and analysis
 - **Conversational AI**: Natural language interactions with Google Gemini
-- **Context-Aware Responses**: Smart replies based on conversation history
+- **Conversation Mode**: Replies use Telegram's reply chain for stateless multi-turn conversations
+- **Context-Aware Responses**: Smart replies based on reply-to-message history
 - **Multi-Modal Support**: Process text, images, and structured data
 - **Customizable Personality**: Configure system instructions for unique response styles
 - **RAG Support**: Integrate your own knowledge base with Retrieval Augmented Generation using LangChain
@@ -57,6 +58,31 @@ Whether you're analyzing images, checking the weather, managing your calendar, o
 ### Quick Start
 
 After setup, just send a message to your bot - no commands needed for AI chat!
+
+## 🗣️ Conversation Mode
+
+Flint supports conversation mode, allowing the bot to reply using historical context from your chat by traversing the Telegram `reply_to_message` chain. This enables multi-turn, context-aware conversations where the bot uses the actual reply chain for context, making the system stateless and robust.
+
+- The bot automatically extracts previous messages by following the reply chain for each incoming message.
+- No configuration is needed—just reply to previous messages and Flint will use the reply chain for smarter, context-aware responses.
+
+### Example
+
+```
+User: What's the weather like today?
+Bot: The weather is sunny and 22°C.
+User (replies to previous bot message): And tomorrow?
+Bot: Tomorrow is expected to be partly cloudy with a high of 20°C.
+```
+
+The bot understands "And tomorrow?" by using the previous weather question as context, thanks to the reply chain.
+
+### Technical Details
+
+- Conversation context is extracted by recursively traversing the `reply_to_message` chain in Telegram messages.
+- No in-memory or persistent history is used; context is stateless and based solely on the reply chain.
+- Contextual replies work for both AI and RAG-powered responses.
+
 
 #### 1. Clone the Repository
 
