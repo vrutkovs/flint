@@ -58,7 +58,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          make test-cov
+          uv run make test-cov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -91,4 +91,4 @@ jobs:
 
       - name: Run format checks
         run: |
-          make format typecheck
+          uv run make format typecheck
