@@ -348,9 +348,11 @@ class Telega:
         try:
             result: dict[str, Any] = self.settings.qa_chain.invoke({"query": update.message.text})
             reply_text: str = result["result"].strip()
-            reply_text += "\nSources:"
-            for doc in result["source_documents"]:
-                reply_text += f"\n- {doc.metadata['source']}"
+            sources = {doc.metadata["source"] for doc in result["source_documents"]}
+            if sources:
+                reply_text += "\nSources:"
+                for source in sorted(sources):
+                    reply_text += f"\n- {source}"
             await self.reply_to_message(update, reply_text)
 
         except Exception as e:
