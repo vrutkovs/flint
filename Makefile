@@ -14,8 +14,7 @@ install-pre-commit: install-dev ## Install pre-commit hooks
 	pre-commit install
 	@echo "Pre-commit hooks installed successfully!"
 
-format: ## Format code with black and ruff
-	black src/ tests/ --line-length=120
+format: ## Format code with ruff
 	ruff check --fix src/ tests/
 	ruff format src/ tests/
 

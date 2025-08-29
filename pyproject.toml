@@ -26,7 +26,6 @@ dev = [
     "types-PyYAML>=6.0.12",
     "types-Pillow>=10.2.0",
     "pre-commit>=3.8.0",
-    "black>=24.10.0",
     "ruff>=0.7.4",
 ]
 test = [
@@ -71,25 +70,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-
-[tool.black]
-line-length = 120
-target-version = ['py313']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
 [tool.ruff]
 line-length = 120
 target-version = "py313"
@@ -112,6 +92,13 @@ ignore = [
     "B008", # do not perform function calls in argument defaults
     "W191", # indentation contains tabs
 ]
+
+[tool.ruff.format]
+# Use ruff's formatter instead of black
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ARG001", "ARG002"] # Unused function arguments in tests

@@ -393,7 +393,7 @@ make install-pre-commit
 
 This project uses pre-commit hooks to ensure code quality and consistency. The hooks will automatically:
 
-- **Format code** with Black (line length: 120)
+- **Format code** with Ruff (line length: 120)
 - **Lint code** with Ruff
 - **Run tests** with pytest
 - **Check** for common issues (trailing whitespace, large files, merge conflicts, etc.)
@@ -427,10 +427,10 @@ pytest tests/ -v
 ### Code Style
 
 ```bash
-# Format code with black and ruff
+# Format code with ruff (both formatting and auto-fix)
 make format
 
-# Run linting checks
+# Run linting checks only
 make lint
 
 # Run type checking
@@ -447,7 +447,7 @@ make help
 make install          # Install project dependencies
 make install-dev      # Install development dependencies
 make install-pre-commit # Install pre-commit hooks
-make format          # Format code with black and ruff
+make format          # Format code with ruff (formatting + auto-fix)
 make lint            # Run linting checks with ruff
 make test            # Run unit tests
 make test-cov        # Run tests with coverage report

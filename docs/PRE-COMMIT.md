@@ -7,9 +7,8 @@ This project uses pre-commit hooks to maintain code quality and consistency. The
 ## Installed Hooks
 
 ### On Every Commit
-- **Black** - Automatic code formatting (line length: 120)
+- **Ruff Format** - Code formatting (line length: 120)
 - **Ruff** - Fast Python linter with auto-fix capabilities
-- **Ruff-format** - Additional formatting from Ruff
 - **File Checks**:
   - Remove trailing whitespace
   - Fix end-of-file newlines
@@ -74,7 +73,7 @@ make pre-commit
 pre-commit run --all-files
 
 # Run specific hook
-pre-commit run black --all-files
+pre-commit run ruff-format --all-files
 pre-commit run ruff --all-files
 
 # Run hooks on staged files only
@@ -97,13 +96,6 @@ git push --no-verify
 
 ## Configuration
 
-### Black Configuration (`pyproject.toml`)
-```toml
-[tool.black]
-line-length = 120
-target-version = ['py313']
-```
-
 ### Ruff Configuration (`pyproject.toml`)
 ```toml
 [tool.ruff]
@@ -122,6 +114,13 @@ select = [
     "ARG", # flake8-unused-arguments
     "SIM", # flake8-simplify
 ]
+
+[tool.ruff.format]
+# Ruff's formatter configuration
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
 ```
 
 ## Troubleshooting
@@ -141,8 +140,8 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-#### 3. Black and Ruff conflicts
-Black runs first and handles formatting, then Ruff runs for linting. They are configured to work together without conflicts.
+#### 3. Formatting and Linting
+Ruff handles both formatting and linting. The formatter runs first, then the linter with auto-fix capabilities.
 
 #### 4. Tests failing on push
 Tests run on push to prevent broken code from being pushed. If tests are failing:
@@ -184,8 +183,8 @@ make pre-commit-update
 Edit `.pre-commit-config.yaml` and add new hook configurations. See [pre-commit.com](https://pre-commit.com/hooks.html) for available hooks.
 
 ### Modifying Rules
-- Black settings: Edit `[tool.black]` in `pyproject.toml`
-- Ruff settings: Edit `[tool.ruff]` in `pyproject.toml`
+- Ruff formatting: Edit `[tool.ruff.format]` in `pyproject.toml`
+- Ruff linting: Edit `[tool.ruff.lint]` in `pyproject.toml`
 - Pre-commit hooks: Edit `.pre-commit-config.yaml`
 
 ## Benefits
@@ -199,6 +198,6 @@ Edit `.pre-commit-config.yaml` and add new hook configurations. See [pre-commit.
 ## Additional Resources
 
 - [Pre-commit Documentation](https://pre-commit.com/)
-- [Black Documentation](https://black.readthedocs.io/)
 - [Ruff Documentation](https://docs.astral.sh/ruff/)
+- [Ruff Formatter Documentation](https://docs.astral.sh/ruff/formatter/)
 - [Project Makefile](../Makefile) - See all available commands

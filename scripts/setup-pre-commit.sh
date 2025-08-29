@@ -57,11 +57,11 @@ echo
 print_status "Running initial code formatting..."
 echo
 
-# Run black
-if pre-commit run black --all-files; then
-    print_status "Black formatting completed"
+# Run ruff format
+if pre-commit run ruff-format --all-files; then
+    print_status "Ruff formatting completed"
 else
-    print_warning "Black made some formatting changes"
+    print_warning "Ruff made some formatting changes"
 fi
 
 # Run ruff with auto-fix
@@ -82,8 +82,8 @@ echo
 print_status "Pre-commit hooks setup complete!"
 echo
 echo "The following hooks are now active:"
-echo "  • Black (code formatting) - runs on commit"
-echo "  • Ruff (linting) - runs on commit"
+echo "  • Ruff format (code formatting) - runs on commit"
+echo "  • Ruff (linting with auto-fix) - runs on commit"
 echo "  • File checks (trailing whitespace, EOF, YAML/TOML validation) - runs on commit"
 echo "  • Pytest (unit tests) - runs on push"
 echo
