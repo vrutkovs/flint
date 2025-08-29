@@ -1,12 +1,14 @@
 """Telega class for handling Telegram bot operations with AI integration."""
 
 import io
-from typing import Optional
+from typing import Optional, Any
+from plugins.mcp import MCPConfiguration, StdioServerParameters
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from structlog.processors import format_exc_info
+from structlog.types import EventDict
 
 from plugins import photo
 from plugins.mcp import MCPConfigReader, MCPClient
@@ -16,15 +18,15 @@ from telega.settings import Settings
 class Telega:
     """Main class for Telegram bot operations with AI integration."""
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings) -> None:
         """
         Initialize Telega with settings configuration.
 
         Args:
             settings: Settings object containing genai client, logger, and model name
         """
-        self.settings = settings
-        self.mcps = MCPConfigReader(self.settings)
+        self.settings: Settings = settings
+        self.mcps: MCPConfigReader = MCPConfigReader(self.settings)
 
     async def download_file(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -62,26 +64,30 @@ class Telega:
                 return None
 
             # Download file to BytesIO buffer
-            file_buffer = io.BytesIO()
+            file_buffer: io.BytesIO = io.BytesIO()
             await file_obj.download_to_memory(file_buffer)
             file_buffer.seek(0)
 
             return file_buffer
 
         except Exception:
-            err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
+            err: EventDict = format_exc_info(
+                self.settings.logger, "exception", {"exc_info": True}
+            )
             self.settings.logger.error(
                 "Failed to download file", error=err, update_id=update.update_id
             )
             return None
 
-    async def is_user_allowed(self, update: Update):
+    async def is_user_allowed(self, update: Update) -> bool:
         """
         Verify if the user is allowed to use the bot.
 
         Args:
             update: Telegram update object
-            context: Telegram context object
+
+        Returns:
+            True if user is allowed, False otherwise
         """
 
         if not self.settings.user_filter or self.settings.user_filter == []:
@@ -105,7 +111,7 @@ class Telega:
 
         return True
 
-    async def reply_to_message(self, update: Update, text: str):
+    async def reply_to_message(self, update: Update, text: str) -> None:
         """
         Reply to a message with a text. This renders the text as Markdown with necessary escaping.
 
@@ -124,7 +130,7 @@ class Telega:
 
     async def handle_photo_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    ) -> None:
         """
         Handle incoming Telegram messages with media content.
 
@@ -146,7 +152,7 @@ class Telega:
         self.settings.logger.info("Processing message", update_id=update.update_id)
 
         # Download the file
-        file_buffer = await self.download_file(update, context)
+        file_buffer: Optional[io.BytesIO] = await self.download_file(update, context)
         if not file_buffer:
             await self.reply_to_message(
                 update, "Sorry, I couldn't download your file. Please try again."
@@ -158,7 +164,7 @@ class Telega:
             self.settings.logger.info(
                 "Generating image description", update_id=update.update_id
             )
-            description = await photo.generate_text_for_image(
+            description: str = await photo.generate_text_for_image(
                 self.settings,
                 file_buffer,
             )
@@ -175,7 +181,9 @@ class Telega:
             await self.reply_to_message(update, description)
 
         except Exception:
-            err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
+            err: EventDict = format_exc_info(
+                self.settings.logger, "exception", {"exc_info": True}
+            )
             self.settings.logger.error(
                 "Error processing image", error=err, update_id=update.update_id
             )
@@ -189,7 +197,7 @@ class Telega:
 
     async def handle_list_mcps_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    ) -> None:
         """
         Output a list of enabled MCPs.
 
@@ -208,15 +216,18 @@ class Telega:
             self.settings.logger.info("Listing MCPs", update_id=update.update_id)
 
             # Get list of enabled MCPs
-            mcps = self.mcps.get_enabled_mcps()
+            mcps: dict[str, Any] = self.mcps.get_enabled_mcps()
+            mcp_names: list[str] = list(mcps.keys())
 
             # Reply with list of enabled MCPs
             await self.reply_to_message(
                 update,
-                f"Here are the MCPs I have enabled:\n{"\n".join(mcps)}",
+                f"Here are the MCPs I have enabled:\n{"\n".join(mcp_names)}",
             )
         except Exception:
-            err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
+            err: EventDict = format_exc_info(
+                self.settings.logger, "exception", {"exc_info": True}
+            )
             self.settings.logger.error(
                 "Error listing MCPs", error=err, update_id=update.update_id
             )
@@ -227,7 +238,7 @@ class Telega:
 
     async def handle_mcp_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    ) -> None:
         """
         Handle messages to MCPs.
 
@@ -242,8 +253,8 @@ class Telega:
         if not update.message or not update.message.text or not context.args:
             return
 
-        tool_name = update.message.text.split()[0].replace("/", "").lower()
-        tool_prompt = " ".join(context.args)
+        tool_name: str = update.message.text.split()[0].replace("/", "").lower()
+        tool_prompt: str = " ".join(context.args)
         self.settings.logger.info(
             "Processing MCP message",
             update_id=update.update_id,
@@ -254,12 +265,16 @@ class Telega:
         try:
             self.mcps.reload_config()
 
-            mcp_config = self.mcps.get_mcp_configuration(tool_name)
+            mcp_config: Optional[MCPConfiguration] = self.mcps.get_mcp_configuration(
+                tool_name
+            )
             if not mcp_config:
                 raise ValueError(f"MCP {tool_name} configuration not found")
             else:
-                server_params = await mcp_config.get_server_params()
-                mcp = MCPClient(
+                server_params: StdioServerParameters = (
+                    await mcp_config.get_server_params()
+                )
+                mcp: MCPClient = MCPClient(
                     name=mcp_config.name,
                     server_params=server_params,
                     logger=self.settings.logger,
@@ -267,7 +282,7 @@ class Telega:
                 if mcp is None:
                     raise ValueError(f"MCP {tool_name} cannot be created")
                 else:
-                    reply_text = await mcp.get_response(
+                    reply_text: Optional[str] = await mcp.get_response(
                         settings=self.settings, prompt=tool_prompt
                     )
             self.settings.logger.error(f"MCP {tool_name} response: {reply_text}")
@@ -279,7 +294,9 @@ class Telega:
             await self.reply_to_message(update, reply_text)
 
         except Exception:
-            err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
+            err: EventDict = format_exc_info(
+                self.settings.logger, "exception", {"exc_info": True}
+            )
             self.settings.logger.error(
                 "Error processing command", error=err, update=update.update_id
             )
@@ -290,7 +307,7 @@ class Telega:
 
     async def handle_text_message(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    ) -> None:
         """
         Handle text-only messages.
 
@@ -319,14 +336,16 @@ class Telega:
             if not response.text:
                 raise ValueError("Empty response from AI")
 
-            reply_text = response.text.strip()
+            reply_text: str = response.text.strip()
             await self.reply_to_message(update, reply_text)
 
         except Exception as e:
             self.settings.logger.error(
                 "Error processing message", error=str(e), update_id=update.update_id
             )
-            err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
+            err: EventDict = format_exc_info(
+                self.settings.logger, "exception", {"exc_info": True}
+            )
             self.settings.logger.error(
                 "Error processing message", error=err, update_id=update.update_id
             )
@@ -337,7 +356,7 @@ class Telega:
 
     async def handle_rag_request(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ):
+    ) -> None:
         """
         Handle requests to RAG database.
 
@@ -355,8 +374,10 @@ class Telega:
         self.settings.logger.info("Processing text message", update_id=update.update_id)
 
         try:
-            result = self.settings.qa_chain.invoke({"query": update.message.text})
-            reply_text = result["result"].strip()
+            result: dict[str, Any] = self.settings.qa_chain.invoke(
+                {"query": update.message.text}
+            )
+            reply_text: str = result["result"].strip()
             reply_text += "\nSources:"
             for doc in result["source_documents"]:
                 reply_text += f"\n- {doc.metadata['source']}"
@@ -366,7 +387,9 @@ class Telega:
             self.settings.logger.error(
                 "Error processing message", error=str(e), update_id=update.update_id
             )
-            err = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
+            err: EventDict = format_exc_info(
+                self.settings.logger, "exception", {"exc_info": True}
+            )
             self.settings.logger.error(
                 "Error processing message", error=err, update_id=update.update_id
             )

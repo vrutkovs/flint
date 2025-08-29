@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Final
+from typing import Final, Optional
 import datetime
 from dotenv import load_dotenv, find_dotenv
 
@@ -14,7 +14,9 @@ from plugins.schedule import send_agenda, ScheduleData
 
 load_dotenv(find_dotenv())
 
-DEFAULT_SYSTEM_INSTRUCTIONS = """
+DEFAULT_SYSTEM_INSTRUCTIONS: Final[
+    str
+] = """
 You are a helpful assistant.
 
 Adopt the following persona for your response: The city's a cold, hard
@@ -30,65 +32,67 @@ Always translate the response back to the user's language, including tool output
 """
 
 # Settings are read from environment variables
-TOKEN: Final = os.getenv("TELEGRAM_TOKEN")
+TOKEN: Final[Optional[str]] = os.getenv("TELEGRAM_TOKEN")
 if not TOKEN:
     print("TELEGRAM_TOKEN environment variable is required")
     sys.exit(1)
 
-CHAT_ID: Final = os.getenv("TELEGRAM_CHAT_ID")
+CHAT_ID: Final[Optional[str]] = os.getenv("TELEGRAM_CHAT_ID")
 if not CHAT_ID:
     print("TELEGRAM_CHAT_ID environment variable is required")
     sys.exit(1)
 
-API_KEY = os.environ.get("GOOGLE_API_KEY")
+API_KEY: Optional[str] = os.environ.get("GOOGLE_API_KEY")
 if not API_KEY:
     print("GOOGLE_API_KEY environment variable is required")
     sys.exit(1)
 
-MODEL_NAME = os.environ.get("MODEL_NAME")
+MODEL_NAME: Optional[str] = os.environ.get("MODEL_NAME")
 if not MODEL_NAME:
     print("MODEL_NAME environment variable is required")
     sys.exit(1)
 
-MCP_CONFIG_PATH = os.environ.get("MCP_CONFIG_PATH")
+MCP_CONFIG_PATH: Optional[str] = os.environ.get("MCP_CONFIG_PATH")
 if not MCP_CONFIG_PATH:
     print("MCP_CONFIG_PATH environment variable is required")
     sys.exit(1)
 
-SUMMARY_MCP_CALENDAR_NAME = os.environ.get("SUMMARY_MCP_CALENDAR_NAME")
+SUMMARY_MCP_CALENDAR_NAME: Optional[str] = os.environ.get("SUMMARY_MCP_CALENDAR_NAME")
 if not SUMMARY_MCP_CALENDAR_NAME:
     print("SUMMARY_MCP_CALENDAR_NAME environment variable is required")
     sys.exit(1)
 
-SUMMARY_MCP_WEATHER_NAME = os.environ.get("SUMMARY_MCP_WEATHER_NAME")
+SUMMARY_MCP_WEATHER_NAME: Optional[str] = os.environ.get("SUMMARY_MCP_WEATHER_NAME")
 if not SUMMARY_MCP_WEATHER_NAME:
     print("SUMMARY_MCP_WEATHER_NAME environment variable is required")
     sys.exit(1)
 
-SYSTEM_INSTRUCTIONS = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
+SYSTEM_INSTRUCTIONS: str = os.environ.get(
+    "SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS
+)
 
-RAG_EMBEDDING_MODEL = os.environ.get("RAG_EMBEDDING_MODEL")
-RAG_LOCATION = os.environ.get("RAG_LOCATION")
-RAG_GOOGLE_PROJECT_ID = os.environ.get("RAG_GOOGLE_PROJECT_ID")
+RAG_EMBEDDING_MODEL: Optional[str] = os.environ.get("RAG_EMBEDDING_MODEL")
+RAG_LOCATION: Optional[str] = os.environ.get("RAG_LOCATION")
+RAG_GOOGLE_PROJECT_ID: Optional[str] = os.environ.get("RAG_GOOGLE_PROJECT_ID")
 
-SCHEDULED_AGENDA_TIME = os.environ.get("SCHEDULED_AGENDA_TIME")
-TZ = os.getenv("TZ", "UTC")
-USER_FILTER = os.environ.get("USER_FILTER", "").split(",")
+SCHEDULED_AGENDA_TIME: Optional[str] = os.environ.get("SCHEDULED_AGENDA_TIME")
+TZ: str = os.getenv("TZ", "UTC")
+USER_FILTER: list[str] = os.environ.get("USER_FILTER", "").split(",")
 
 # Configure structured logging
-log = structlog.get_logger()
+log: structlog.BoundLogger = structlog.get_logger()
 log.info("Starting up Flint...")
 
 # Initialize Google's Gemini client for text generation
 try:
-    genai_client = genai.Client(api_key=API_KEY)
+    genai_client: genai.Client = genai.Client(api_key=API_KEY)
     log.info("GenAI client initialized successfully")
 except Exception as e:
     log.error("Failed to initialize GenAI client", error=str(e))
     sys.exit(1)
 
 # Create Settings instance
-settings = Settings(
+settings: Settings = Settings(
     genai_client=genai_client,
     logger=log,
     model_name=MODEL_NAME,
@@ -106,12 +110,12 @@ settings = Settings(
 log.info("Settings instance created")
 
 # Create Telega instance
-telega = Telega(settings=settings)
+telega: Telega = Telega(settings=settings)
 log.info("Telega instance created")
 
 # Create Telegram application
 try:
-    app = Application.builder().token(TOKEN).build()
+    app: Application = Application.builder().token(TOKEN).build()
     log.info("Telegram application created")
 except Exception as e:
     log.error("Failed to create Telegram application", error=str(e))
@@ -144,9 +148,15 @@ if SCHEDULED_AGENDA_TIME:
         log.error("Failed to create job queue")
         sys.exit(1)
 
+    hour: int
+    minute: int
     hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(":"))
-    schedule_time = datetime.time(hour=hour, minute=minute, tzinfo=settings.timezone)
-    scheduleData = ScheduleData(settings=settings, genai_client=genai_client)
+    schedule_time: datetime.time = datetime.time(
+        hour=hour, minute=minute, tzinfo=settings.timezone
+    )
+    scheduleData: ScheduleData = ScheduleData(
+        settings=settings, genai_client=genai_client
+    )
 
     job_queue.run_daily(
         send_agenda,

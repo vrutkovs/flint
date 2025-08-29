@@ -1,10 +1,13 @@
 import io
+from typing import Final
 
 from PIL import Image
 
 from telega.settings import Settings
 
-PROMPT = "Describe this image in one sentence. If the picture contains text, include it in the description as is."
+PROMPT: Final[str] = (
+    "Describe this image in one sentence. If the picture contains text, include it in the description as is."
+)
 
 
 async def generate_text_for_image(
@@ -14,13 +17,17 @@ async def generate_text_for_image(
     Generate text description for an image using AI.
 
     Args:
+        settings: Settings instance containing genai client and model configuration
         file_buffer: image encoded as bytes
         prompt: Text prompt for AI generation
 
     Returns:
         Generated text description
+
+    Raises:
+        ValueError: If AI response is None
     """
-    image = Image.open(file_buffer)
+    image: Image.Image = Image.open(file_buffer)
 
     # Use GenAI to generate text
     response = await settings.genai_client.aio.models.generate_content(
@@ -31,7 +38,7 @@ async def generate_text_for_image(
         ],
         config=settings.genconfig,
     )
-    result = response.text
+    result: str | None = response.text
     if result is None:
         raise ValueError("AI response is None")
     return result.strip()

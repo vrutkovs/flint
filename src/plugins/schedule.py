@@ -1,18 +1,27 @@
+from typing import Optional, Final
 from telega.settings import Settings
 from telegram.ext import ContextTypes
 
 import structlog
+from google import genai
 
-from plugins.mcp import MCPConfigReader, MCPClient
+from plugins.mcp import (
+    MCPConfigReader,
+    MCPClient,
+    MCPConfiguration,
+    StdioServerParameters,
+)
 
 
 class ScheduleData:
-    def __init__(self, settings: Settings, genai_client):
-        self.settings = settings
-        self.genai_client = genai_client
+    def __init__(self, settings: Settings, genai_client: genai.Client) -> None:
+        self.settings: Settings = settings
+        self.genai_client: genai.Client = genai_client
 
 
-PROMPT_TEMPLATE = """
+PROMPT_TEMPLATE: Final[
+    str
+] = """
 You are a helpful digital assistant.
 
 Your primary role is to provide a daily briefing.
@@ -46,12 +55,14 @@ persona. If a section is empty or explicitly states no information,
 acknowledge it cheerfully or omit it gracefully.
 """
 
-CALENDAR_MCP_PROMPT = "List upcoming calendar events today in my primary calendar in Europe/Prague timezone?"
-WEATHER_MCP_PROMPT = "What is the weather like in Brno today?"
+CALENDAR_MCP_PROMPT: Final[str] = (
+    "List upcoming calendar events today in my primary calendar in Europe/Prague timezone?"
+)
+WEATHER_MCP_PROMPT: Final[str] = "What is the weather like in Brno today?"
 
 
-async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
-    log = structlog.get_logger()
+async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
+    log: structlog.BoundLogger = structlog.get_logger()
     log.info("Sending agenda")
 
     job = context.job
@@ -62,26 +73,31 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
     if not job_data:
         print("Job data is missing")
         return
-    chat_id = job.chat_id
+    chat_id: Optional[int] = job.chat_id
     if not chat_id:
         print("Chat ID is missing")
         return
 
-    settings = job_data.__getattribute__("settings")
-    genai_client = job_data.__getattribute__("genai_client")
+    settings: Settings = job_data.__getattribute__("settings")
+    genai_client: genai.Client = job_data.__getattribute__("genai_client")
 
     settings.logger.info("Generating agenda")
 
-    mcps = MCPConfigReader(settings)
+    mcps: MCPConfigReader = MCPConfigReader(settings)
     mcps.reload_config()
 
-    weather_mcp_config = mcps.get_mcp_configuration(settings.agenda_mcp_weather_name)
+    weather_data: Optional[str] = None
+    weather_mcp_config: Optional[MCPConfiguration] = mcps.get_mcp_configuration(
+        settings.agenda_mcp_weather_name
+    )
     if not weather_mcp_config:
         settings.logger.error("Weather MCP configuration not found")
         weather_data = None
     else:
-        server_params = await weather_mcp_config.get_server_params()
-        weather_mcp = MCPClient(
+        server_params: StdioServerParameters = (
+            await weather_mcp_config.get_server_params()
+        )
+        weather_mcp: MCPClient = MCPClient(
             name=weather_mcp_config.name,
             server_params=server_params,
             logger=settings.logger,
@@ -95,13 +111,16 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
             )
     settings.logger.info(f"Weather data fetched: {weather_data}")
 
-    calendar_mcp_config = mcps.get_mcp_configuration(settings.summary_mcp_calendar_name)
+    calendar_data: Optional[str] = None
+    calendar_mcp_config: Optional[MCPConfiguration] = mcps.get_mcp_configuration(
+        settings.agenda_mcp_calendar_name
+    )
     if not calendar_mcp_config:
         settings.logger.error("Calendar MCP configuration not found")
         calendar_data = None
     else:
         server_params = await calendar_mcp_config.get_server_params()
-        calendar_mcp = MCPClient(
+        calendar_mcp: MCPClient = MCPClient(
             name=calendar_mcp_config.name,
             server_params=server_params,
             logger=settings.logger,
@@ -115,7 +134,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
             )
     settings.logger.info(f"Calendar data fetched: {calendar_data}")
 
-    prompt = PROMPT_TEMPLATE.format(
+    prompt: str = PROMPT_TEMPLATE.format(
         weather_data=weather_data, calendar_data=calendar_data
     )
     settings.logger.info(f"Prompt sent:\n{prompt}")
@@ -125,7 +144,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
         contents=[prompt],
         config=settings.genconfig,
     )
-    text = response.text
+    text: Optional[str] = response.text
     if not text:
         settings.logger.error("Empty response from AI when generating agenda")
         raise ValueError("Empty response from AI")

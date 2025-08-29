@@ -1,5 +1,6 @@
 """Settings module for Telega bot configuration."""
 
+from typing import Optional, Any
 import pytz
 import structlog
 from google import genai
@@ -20,29 +21,41 @@ class Settings:
         summary_mcp_calendar_name: str,
         summary_mcp_weather_name: str,
         system_instructions: str,
-        rag_embedding_model: str | None = None,
-        rag_location: str | None = None,
-        google_api_key: str | None = None,
-        user_filter: list = [],
+        rag_embedding_model: Optional[str] = None,
+        rag_location: Optional[str] = None,
+        google_api_key: Optional[str] = None,
+        user_filter: list[str] = [],
         model_name: str = "gemini-2.5-flash",
-    ):
+    ) -> None:
         """
         Initialize Settings with required configuration.
 
         Args:
             genai_client: Google GenAI client for text generation
             logger: Structured logger instance
+            chat_id: Telegram chat ID
+            tz: Timezone string
+            mcp_config_path: Path to MCP configuration file
+            summary_mcp_calendar_name: Name of calendar MCP for summaries
+            summary_mcp_weather_name: Name of weather MCP for summaries
+            system_instructions: System instructions for AI model
+            rag_embedding_model: Optional RAG embedding model name
+            rag_location: Optional RAG data location
+            google_api_key: Optional Google API key
+            user_filter: List of allowed usernames
             model_name: Name of the AI model to use for generation
         """
-        self.genai_client = genai_client
-        self.logger = logger
-        self.model_name = model_name
-        self.chat_id = chat_id
-        self.timezone = pytz.timezone(tz)
-        self.mcp_config_path = mcp_config_path
-        self.agenda_mcp_calendar_name = summary_mcp_calendar_name
-        self.agenda_mcp_weather_name = summary_mcp_weather_name
-        self.user_filter = user_filter
+        self.genai_client: genai.Client = genai_client
+        self.logger: structlog.BoundLogger = logger
+        self.model_name: str = model_name
+        self.chat_id: str = chat_id
+        self.timezone: pytz.tzinfo.BaseTzInfo = pytz.timezone(tz)
+        self.mcp_config_path: str = mcp_config_path
+        self.agenda_mcp_calendar_name: str = summary_mcp_calendar_name
+        self.agenda_mcp_weather_name: str = summary_mcp_weather_name
+        self.user_filter: list[str] = user_filter
+        self.genconfig: genai.types.GenerateContentConfig
+        self.qa_chain: Optional[Any] = None
 
         self.__set_genconfig__(system_instructions)
         self.__set_qa_chain(
@@ -55,18 +68,37 @@ class Settings:
         """Return string representation of Settings."""
         return f"Settings(model_name='{self.model_name}')"
 
-    def __set_genconfig__(self, system_instructions):
-        system_instruction_split = list(system_instructions.split("\n"))
+    def __set_genconfig__(self, system_instructions: str) -> None:
+        """
+        Set generation configuration with system instructions.
+
+        Args:
+            system_instructions: System instructions for the AI model
+        """
+        system_instruction_split: list[str] = list(system_instructions.split("\n"))
         self.logger.info(f"System instruction initialized: {system_instruction_split}")
 
         self.genconfig = genai.types.GenerateContentConfig(
-            system_instruction=system_instruction_split
+            system_instruction=system_instruction_split  # pyright: ignore
         )
 
     def __set_qa_chain(
-        self, rag_embedding_model, rag_location, google_api_key, model_name
-    ):
-        if rag_embedding_model and rag_location:
+        self,
+        rag_embedding_model: Optional[str],
+        rag_location: Optional[str],
+        google_api_key: Optional[str],
+        model_name: str,
+    ) -> None:
+        """
+        Initialize RAG QA chain if configuration is provided.
+
+        Args:
+            rag_embedding_model: RAG embedding model name
+            rag_location: RAG data location
+            google_api_key: Google API key
+            model_name: Model name for RAG
+        """
+        if rag_embedding_model and rag_location and google_api_key:
             self.logger.info("RAG: initializing")
             self.qa_chain = prepare_rag_tool(
                 self.logger,

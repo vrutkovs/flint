@@ -19,3 +19,42 @@ dependencies = [
     "structlog>=25.4.0",
     "unstructured[md]>=0.18.14",
 ]
+
+[project.optional-dependencies]
+dev = ["mypy>=1.11.0", "types-PyYAML>=6.0.12", "types-Pillow>=10.2.0"]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+pretty = true
+show_error_codes = true
+show_error_context = true
+show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = [
+    "telegram.*",
+    "google.*",
+    "langchain.*",
+    "langchain_community.*",
+    "langchain_google_genai.*",
+    "langchain_core.*",
+    "mcp.*",
+    "pytz.*",
+    "dotenv.*",
+    "structlog.*",
+    "unstructured.*",
+]
+ignore_missing_imports = true
+
+[project.scripts]
+typecheck = "mypy src/"
