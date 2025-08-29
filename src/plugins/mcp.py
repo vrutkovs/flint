@@ -116,8 +116,8 @@ class MCPClient:
                 self.logger.debug(f"MCP {self.name} response: {response}")
                 try:
                     return (
-                        response.candidates[0]
-                        .content.parts[0]
+                        response.candidates[0] # pyright: ignore
+                        .content.parts[0] # pyright: ignore
                         .text.strip()  # pyright: ignore
                     )
                 except Exception as e:
