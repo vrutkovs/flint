@@ -75,7 +75,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
     mcps = MCPConfigReader(settings)
     mcps.reload_config()
 
-    weather_mcp_config = mcps.get_mcp_configuration(settings.summary_mcp_weather_name)
+    weather_mcp_config = mcps.get_mcp_configuration(settings.agenda_mcp_weather_name)
     if not weather_mcp_config:
         settings.logger.error("Weather MCP configuration not found")
         weather_data = None
@@ -95,7 +95,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE):
             )
     settings.logger.info(f"Weather data fetched: {weather_data}")
 
-    calendar_mcp_config = mcps.get_mcp_configuration(settings.SUMMARY_MCP_CALENDAR_NAME)
+    calendar_mcp_config = mcps.get_mcp_configuration(settings.summary_mcp_calendar_name)
     if not calendar_mcp_config:
         settings.logger.error("Calendar MCP configuration not found")
         calendar_data = None
