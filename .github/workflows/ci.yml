@@ -54,11 +54,11 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-          uv pip install -e ".[dev,test]"
+          make install-dev
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ --cov=src --cov-report=term-missing --cov-report=xml
+          make test-cov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -87,16 +87,8 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-          uv pip install -e ".[dev]"
+          make install-dev
 
-      - name: Run ruff format check
+      - name: Run format checks
         run: |
-          ruff format --check --diff src/ tests/
-
-      - name: Run ruff
-        run: |
-          ruff check src/ tests/
-
-      - name: Run mypy
-        run: |
-          mypy src/
+          make format typecheck
