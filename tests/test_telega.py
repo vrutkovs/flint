@@ -874,8 +874,7 @@ class TestMCPClient:
         mock_response.candidates = [Mock()]
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
-        mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Test response")
+        mock_response.candidates[0].content.parts[0].text = "Test response"
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
@@ -902,8 +901,7 @@ class TestMCPClient:
         mock_response.candidates = [Mock()]
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
-        mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Custom response")
+        mock_response.candidates[0].content.parts[0].text = "Custom response"
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
@@ -939,8 +937,7 @@ class TestMCPClient:
         mock_response.candidates = [Mock()]
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
-        mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Response with tools")
+        mock_response.candidates[0].content.parts[0].text = "Response with tools"
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
@@ -986,7 +983,7 @@ class TestMCPClient:
 
                 assert result is None
                 mock_logger.error.assert_called()
-                assert "failed to generate a response" in str(mock_logger.error.call_args)
+                assert "response.candidates is missing or empty" in str(mock_logger.error.call_args)
 
     @pytest.mark.asyncio
     async def test_get_response_strips_whitespace(self, mcp_client, mock_settings):
@@ -995,8 +992,7 @@ class TestMCPClient:
         mock_response.candidates = [Mock()]
         mock_response.candidates[0].content = Mock()
         mock_response.candidates[0].content.parts = [Mock()]
-        mock_response.candidates[0].content.parts[0].text = Mock()
-        mock_response.candidates[0].content.parts[0].text.strip = Mock(return_value="Stripped response")
+        mock_response.candidates[0].content.parts[0].text = "Stripped response"
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
