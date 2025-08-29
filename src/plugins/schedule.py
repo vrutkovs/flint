@@ -1,7 +1,8 @@
-from typing import Final
+from typing import Any, Final, cast
 
 import structlog
 from google import genai
+from PIL import Image
 from telegram.ext import ContextTypes
 
 from plugins.mcp import (
@@ -97,8 +98,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
             logger=settings.logger,
         )
         if weather_mcp is None:
-            settings.logger.error("Weather MCP not found")
-            weather_data = None
+            pass
         else:
             weather_data = await weather_mcp.get_response(settings=settings, prompt=WEATHER_MCP_PROMPT)
     settings.logger.info(f"Weather data fetched: {weather_data}")
@@ -116,8 +116,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
             logger=settings.logger,
         )
         if calendar_mcp is None:
-            settings.logger.error("Calendar MCP not found")
-            calendar_data = None
+            pass
         else:
             calendar_data = await calendar_mcp.get_response(settings=settings, prompt=CALENDAR_MCP_PROMPT)
     settings.logger.info(f"Calendar data fetched: {calendar_data}")
@@ -125,11 +124,9 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
     prompt: str = PROMPT_TEMPLATE.format(weather_data=weather_data, calendar_data=calendar_data)
     settings.logger.info(f"Prompt sent:\n{prompt}")
 
-    from typing import Any, cast
-
     response = await genai_client.aio.models.generate_content(
         model=settings.model_name,
-        contents=cast(list[Any], [prompt]),  # list[str | Image | File | Part]
+        contents=cast(list[str | Image.Image | Any | Any], [prompt]),
         config=settings.genconfig,
     )
     text: str | None = response.text

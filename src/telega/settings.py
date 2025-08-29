@@ -1,6 +1,7 @@
 """Settings module for Telega bot configuration."""
 
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, cast
 
 import pytz
 import structlog
@@ -74,13 +75,12 @@ class Settings:
         Args:
             system_instructions: System instructions for the AI model
         """
-        from collections.abc import Sequence
 
         system_instruction_split: Sequence[str] = list(system_instructions.split("\n"))
         self.logger.info(f"System instruction initialized: {system_instruction_split}")
 
         self.genconfig = genai.types.GenerateContentConfig(
-            system_instruction=system_instruction_split  # pyright: ignore
+            system_instruction=cast(list[Any], system_instruction_split)  # pyright: ignore
         )
 
     def __set_qa_chain(

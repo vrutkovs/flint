@@ -1,8 +1,9 @@
 """Telega class for handling Telegram bot operations with AI integration."""
 
 import io
-from typing import Any
+from typing import Any, cast
 
+from PIL import Image
 from structlog.processors import format_exc_info
 from structlog.types import EventDict
 from telegram import Update
@@ -284,9 +285,7 @@ class Telega:
             # Generate response using AI
             response = await self.settings.genai_client.aio.models.generate_content(
                 model=self.settings.model_name,
-                contents=[
-                    update.message.text,
-                ],
+                contents=cast(list[str | Image.Image | Any | Any], [update.message.text]),
                 config=self.settings.genconfig,
             )
             if not response.text:

@@ -2,11 +2,12 @@ import os
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import structlog
 import yaml
 from mcp import ClientSession, StdioServerParameters, stdio_client
+from PIL import Image
 
 from telega.settings import Settings
 
@@ -101,7 +102,7 @@ class MCPClient:
             self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
             response = await settings.genai_client.aio.models.generate_content(
                 model=settings.model_name,
-                contents=[prompt],
+                contents=cast(list[str | Image.Image | Any | Any], [prompt]),
                 config=genconfig,
             )
             self.logger.debug(f"MCP {self.name} response: {response}")
@@ -130,7 +131,7 @@ class MCPClient:
                     self.logger.error(f"MCP {self.name}: part.text is missing or not a string")
                     return None
 
-                return text.strip()
+                return cast(str, text.strip())
             except Exception as e:
                 self.logger.error(f"MCP {self.name} failed to generate a response: {e}")
                 return None

@@ -1,5 +1,5 @@
 import io
-from typing import Final
+from typing import Any, Final, cast
 
 from PIL import Image
 
@@ -30,10 +30,7 @@ async def generate_text_for_image(settings: Settings, file_buffer: io.BytesIO, p
     # Use GenAI to generate text
     response = await settings.genai_client.aio.models.generate_content(
         model=settings.model_name,
-        contents=[
-            prompt,
-            image,
-        ],
+        contents=cast(list[str | Image.Image | Any | Any], [prompt, image]),
         config=settings.genconfig,
     )
     result: str | None = response.text
