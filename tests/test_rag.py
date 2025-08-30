@@ -17,13 +17,6 @@ def mock_documents():
     return [doc1, doc2]
 
 
-@pytest.fixture
-def mock_split_documents():
-    doc1 = MagicMock()
-    doc2 = MagicMock()
-    return [doc1, doc2]
-
-
 @patch("src.plugins.rag.DirectoryLoader")
 @patch("src.plugins.rag.RecursiveCharacterTextSplitter")
 @patch("src.plugins.rag.GoogleGenerativeAIEmbeddings")
@@ -39,14 +32,12 @@ def test_prepare_rag_tool_success(
     mock_loader,
     mock_logger,
     mock_documents,
-    mock_split_documents,
 ):
     # Setup mocks
     mock_loader_instance = mock_loader.return_value
-    mock_loader_instance.load.return_value = mock_documents
+    mock_loader_instance.load_and_split.return_value = mock_documents
 
     mock_textsplitter_instance = mock_textsplitter.return_value
-    mock_textsplitter_instance.split_documents.return_value = mock_split_documents
 
     mock_embeddings_instance = mock_embeddings.return_value
 
@@ -72,28 +63,24 @@ def test_prepare_rag_tool_success(
     assert result == mock_rag_chain
     mock_loader.assert_any_call("dir1", use_multithreading=True, silent_errors=True)
     mock_loader.assert_any_call("dir2", use_multithreading=True, silent_errors=True)
-    assert mock_loader_instance.load.call_count == 2
+    assert mock_loader_instance.load_and_split.call_count == 2
     mock_textsplitter.assert_called_once_with(chunk_size=1000, chunk_overlap=1000)
-    mock_textsplitter_instance.split_documents.assert_called_once()
+    mock_loader_instance.load_and_split.assert_any_call(mock_textsplitter_instance)
     mock_embeddings.assert_called_once_with(model="embedding-model", google_api_key=ANY)
     mock_chroma.assert_called_once_with(
         embedding_function=mock_embeddings_instance,
         persist_directory="vector-storage-location",
+        collection_metadata={"hnsw:space": "cosine"},
     )
-    mock_chroma_instance.add_documents.assert_called_once_with(documents=mock_split_documents)
+    mock_chroma_instance.add_documents.assert_any_call(documents=mock_documents)
+    assert mock_chroma_instance.add_documents.call_count == 2
     mock_chroma_instance.as_retriever.assert_called_once()
     mock_llm.assert_called_once_with(model="llm-model", temperature=0.0, max_tokens=None, api_key="api-key")
     mock_retrievalqa.from_chain_type.assert_called_once_with(
         llm=mock_llm_instance, retriever="retriever", return_source_documents=True, chain_type="stuff"
     )
-    mock_logger.debug.assert_any_call("RAG: loaded documents", location="dir1", count=len(mock_documents))
-    mock_logger.debug.assert_any_call("RAG: loaded documents", location="dir2", count=len(mock_documents))
-    mock_logger.debug.assert_any_call(
-        "RAG: prepared retrieval",
-        llm="llm-model",
-        location="dir1,dir2",
-        count=4,
-    )
+    mock_logger.debug.assert_any_call("RAG: loaded chunks", location="dir1", count=len(mock_documents))
+    mock_logger.debug.assert_any_call("RAG: loaded chunks", location="dir2", count=len(mock_documents))
 
 
 @patch("src.plugins.rag.DirectoryLoader")
@@ -113,10 +100,9 @@ def test_prepare_rag_tool_empty_location(
 ):
     # Setup mocks
     mock_loader_instance = mock_loader.return_value
-    mock_loader_instance.load.return_value = []
+    mock_loader_instance.load_and_split.return_value = []
 
     mock_textsplitter_instance = mock_textsplitter.return_value
-    mock_textsplitter_instance.split_documents.return_value = []
 
     mock_chroma_instance = mock_chroma.return_value
     mock_chroma_instance.as_retriever.return_value = "retriever"
@@ -136,16 +122,9 @@ def test_prepare_rag_tool_empty_location(
 
     assert result == mock_rag_chain
     mock_loader.assert_called_once_with("", use_multithreading=True, silent_errors=True)
-    mock_loader_instance.load.assert_called_once()
-    mock_textsplitter_instance.split_documents.assert_called_once_with([])
+    mock_loader_instance.load_and_split.assert_called_once_with(mock_textsplitter_instance)
     mock_chroma_instance.add_documents.assert_called_once_with(documents=[])
-    mock_logger.debug.assert_any_call("RAG: loaded documents", location="", count=0)
-    mock_logger.debug.assert_any_call(
-        "RAG: prepared retrieval",
-        llm="llm-model",
-        location="",
-        count=0,
-    )
+    mock_logger.debug.assert_any_call("RAG: loaded chunks", location="", count=0)
 
 
 @patch("src.plugins.rag.DirectoryLoader")
@@ -165,10 +144,10 @@ def test_prepare_rag_tool_multiple_locations(
 ):
     # Setup mocks
     mock_loader_instance = mock_loader.return_value
-    mock_loader_instance.load.side_effect = [[MagicMock()], [MagicMock(), MagicMock()]]
+    side_effect_docs = [[MagicMock()], [MagicMock(), MagicMock()]]
+    mock_loader_instance.load_and_split.side_effect = side_effect_docs
 
     mock_textsplitter_instance = mock_textsplitter.return_value
-    mock_textsplitter_instance.split_documents.return_value = [MagicMock(), MagicMock(), MagicMock()]
 
     mock_chroma_instance = mock_chroma.return_value
     mock_chroma_instance.as_retriever.return_value = "retriever"
@@ -188,14 +167,10 @@ def test_prepare_rag_tool_multiple_locations(
 
     assert result == mock_rag_chain
     assert mock_loader.call_count == 2
-    assert mock_loader_instance.load.call_count == 2
-    mock_textsplitter_instance.split_documents.assert_called_once()
-    mock_chroma_instance.add_documents.assert_called_once()
-    mock_logger.debug.assert_any_call("RAG: loaded documents", location="loc1", count=1)
-    mock_logger.debug.assert_any_call("RAG: loaded documents", location="loc2", count=2)
-    mock_logger.debug.assert_any_call(
-        "RAG: prepared retrieval",
-        llm="llm-model",
-        location="loc1,loc2",
-        count=3,
-    )
+    assert mock_loader_instance.load_and_split.call_count == 2
+    mock_loader_instance.load_and_split.assert_any_call(mock_textsplitter_instance)
+    assert mock_chroma_instance.add_documents.call_count == 2
+    mock_chroma_instance.add_documents.assert_any_call(documents=side_effect_docs[0])
+    mock_chroma_instance.add_documents.assert_any_call(documents=side_effect_docs[1])
+    mock_logger.debug.assert_any_call("RAG: loaded chunks", location="loc1", count=1)
+    mock_logger.debug.assert_any_call("RAG: loaded chunks", location="loc2", count=2)

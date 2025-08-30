@@ -1,3 +1,4 @@
+import gc
 from typing import Any
 
 import structlog
@@ -32,7 +33,6 @@ def prepare_rag_tool(
     Returns:
         RetrievalQA chain configured with the specified models and documents
     """
-    data: list[Document] = []
     locations: list[str] = rag_location.split(",")
 
     # Create vector store
@@ -43,19 +43,28 @@ def prepare_rag_tool(
     vector_store: Chroma = Chroma(
         embedding_function=embeddings,
         persist_directory=rag_vector_storage,
+        collection_metadata={"hnsw:space": "cosine"},
     )
+
+    text_splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=1000)
 
     for location in locations:
         loader: DirectoryLoader = DirectoryLoader(location, use_multithreading=True, silent_errors=True)
-        chunk: list[Document] = loader.load()
-        logger.debug("RAG: loaded documents", location=location, count=len(chunk))
-        data.extend(chunk)
+        chunk: list[Document] = loader.load_and_split(text_splitter)
+        logger.debug("RAG: loaded chunks", location=location, count=len(chunk))
+        vector_store.add_documents(documents=chunk)
+        del loader, chunk
+        gc.collect()
 
-    text_splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=1000)
-    vector_store.add_documents(documents=text_splitter.split_documents(data))
+    logger.debug(
+        "RAG: document scan complete",
+    )
 
     # Create retriever
     retriever: Any = vector_store.as_retriever()
+    logger.debug(
+        "RAG: retriever prepared",
+    )
 
     llm: ChatGoogleGenerativeAI = ChatGoogleGenerativeAI(
         model=rag_llm_model,
@@ -64,10 +73,9 @@ def prepare_rag_tool(
         api_key=google_api_key,
     )
     logger.debug(
-        "RAG: prepared retrieval",
+        "RAG: prepared llm",
         llm=rag_llm_model,
         location=rag_location,
-        count=len(data),
     )
 
     rag_chain: RetrievalQA = RetrievalQA.from_chain_type(
@@ -75,6 +83,10 @@ def prepare_rag_tool(
         retriever=retriever,
         return_source_documents=True,  # to get source documents with answers
         chain_type="stuff",  # concatenates retrieved docs into prompt
+    )
+
+    logger.debug(
+        "RAG: retrieval QA chain ready",
     )
 
     return rag_chain
