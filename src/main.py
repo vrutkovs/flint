@@ -8,6 +8,7 @@ from dotenv import find_dotenv, load_dotenv
 from google import genai
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
+from plugins.diary import DiaryData, generate_diary_entry
 from plugins.schedule import ScheduleData, send_agenda
 from telega.main import Telega
 from telega.settings import Settings
@@ -17,9 +18,7 @@ load_dotenv(find_dotenv())
 DEFAULT_SYSTEM_INSTRUCTIONS: Final[str] = """
 You are a helpful assistant.
 
-Adopt the following persona for your response: The city's a cold, hard
-place. You're a world-weary film noir detective called Fenton "Flint" Foster.
-Deliver the facts, straight, no chaser.
+CRITICAL: You need to speak in a comically overdone European accent
 
 Organize the information clearly. Use emojis if they genuinely enhance the
 message and fit your adopted persona.
@@ -55,14 +54,14 @@ if not MCP_CONFIG_PATH:
     print("MCP_CONFIG_PATH environment variable is required")
     sys.exit(1)
 
-SUMMARY_MCP_CALENDAR_NAME: str | None = os.environ.get("SUMMARY_MCP_CALENDAR_NAME")
-if not SUMMARY_MCP_CALENDAR_NAME:
-    print("SUMMARY_MCP_CALENDAR_NAME environment variable is required")
+MCP_CALENDAR_NAME: str | None = os.environ.get("MCP_CALENDAR_NAME")
+if not MCP_CALENDAR_NAME:
+    print("MCP_CALENDAR_NAME environment variable is required")
     sys.exit(1)
 
-SUMMARY_MCP_WEATHER_NAME: str | None = os.environ.get("SUMMARY_MCP_WEATHER_NAME")
-if not SUMMARY_MCP_WEATHER_NAME:
-    print("SUMMARY_MCP_WEATHER_NAME environment variable is required")
+MCP_WEATHER_NAME: str | None = os.environ.get("MCP_WEATHER_NAME")
+if not MCP_WEATHER_NAME:
+    print("MCP_WEATHER_NAME environment variable is required")
     sys.exit(1)
 
 SYSTEM_INSTRUCTIONS: str = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
@@ -72,6 +71,8 @@ RAG_LOCATION: str | None = os.environ.get("RAG_LOCATION")
 RAG_VECTOR_STORAGE: str | None = os.environ.get("RAG_VECTOR_STORAGE")
 
 SCHEDULED_AGENDA_TIME: str | None = os.environ.get("SCHEDULED_AGENDA_TIME")
+SCHEDULED_DIARY_TIME: str | None = os.environ.get("SCHEDULED_DIARY_TIME", "23:59")
+GOOGLE_OAUTH_CREDENTIALS: str | None = os.environ.get("GOOGLE_OAUTH_CREDENTIALS")
 TZ: str = os.getenv("TZ", "UTC")
 USER_FILTER: list[str] = os.environ.get("USER_FILTER", "").split(",")
 
@@ -95,8 +96,8 @@ settings: Settings = Settings(
     chat_id=CHAT_ID,
     tz=TZ,
     mcp_config_path=MCP_CONFIG_PATH,
-    summary_mcp_calendar_name=SUMMARY_MCP_CALENDAR_NAME,
-    summary_mcp_weather_name=SUMMARY_MCP_WEATHER_NAME,
+    mcp_calendar_name=MCP_CALENDAR_NAME,
+    mcp_weather_name=MCP_WEATHER_NAME,
     user_filter=USER_FILTER,
     system_instructions=SYSTEM_INSTRUCTIONS,
     rag_embedding_model=RAG_EMBEDDING_MODEL,
@@ -112,7 +113,7 @@ log.info("Telega instance created")
 
 # Create Telegram application
 try:
-    app: Application = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).build()
     log.info("Telegram application created")
 except Exception as e:
     log.error("Failed to create Telegram application", error=str(e))
@@ -156,6 +157,36 @@ if SCHEDULED_AGENDA_TIME:
         data=scheduleData,
     )
     log.info(f"Scheduled agenda updated at {schedule_time}")
+
+# Create scheduler for diary entries
+if SCHEDULED_DIARY_TIME:
+    if GOOGLE_OAUTH_CREDENTIALS and not os.path.exists(GOOGLE_OAUTH_CREDENTIALS):
+        log.warning(f"Google OAuth credentials file not found: {GOOGLE_OAUTH_CREDENTIALS}")
+        log.warning("Diary feature will work with limited functionality (no calendar data)")
+
+    job_queue = app.job_queue
+    if not job_queue:
+        log.error("Failed to create job queue")
+        sys.exit(1)
+
+    diary_hour: int
+    diary_minute: int
+    diary_hour, diary_minute = map(int, SCHEDULED_DIARY_TIME.split(":"))
+    diary_schedule_time: datetime.time = datetime.time(hour=diary_hour, minute=diary_minute, tzinfo=settings.timezone)
+    diary_data: DiaryData = DiaryData(settings=settings, genai_client=genai_client)
+
+    job_queue.run_daily(
+        generate_diary_entry,
+        time=diary_schedule_time,
+        chat_id=int(CHAT_ID),
+        data=diary_data,
+    )
+    log.info(f"Scheduled diary entry generation at {diary_schedule_time}")
+
+    if GOOGLE_OAUTH_CREDENTIALS:
+        log.info(f"Google Calendar integration enabled using: {GOOGLE_OAUTH_CREDENTIALS}")
+    else:
+        log.info("GOOGLE_OAUTH_CREDENTIALS not set - diary will work without calendar data")
 
 # Start the bot
 try:

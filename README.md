@@ -133,8 +133,8 @@ MODEL_NAME=gemini-2.0-flash-exp
 
 # MCP Configuration (Required)
 MCP_CONFIG_PATH=/path/to/mcp_config.yaml
-SUMMARY_MCP_CALENDAR_NAME=calendar
-SUMMARY_MCP_WEATHER_NAME=weather
+MCP_CALENDAR_NAME=calendar
+MCP_WEATHER_NAME=weather
 
 # Optional Features
 SCHEDULED_AGENDA_TIME=07:30
@@ -170,8 +170,8 @@ python src/main.py
 | `GOOGLE_API_KEY` | Google AI API key | `AIzaSyA...` |
 | `MODEL_NAME` | Gemini model variant | `gemini-2.0-flash-exp` |
 | `MCP_CONFIG_PATH` | MCP config file path | `/home/user/.config/flint/mcp.yaml` |
-| `SUMMARY_MCP_CALENDAR_NAME` | Calendar MCP server name | `calendar` |
-| `SUMMARY_MCP_WEATHER_NAME` | Weather MCP server name | `weather` |
+| `MCP_CALENDAR_NAME` | Calendar MCP server name | `calendar` |
+| `MCP_WEATHER_NAME` | Weather MCP server name | `weather` |
 
 #### Optional Settings
 
@@ -536,7 +536,7 @@ Popular MCP servers you can configure:
 2. Check MCP server installation: `npx -y @modelcontextprotocol/server-name`
 3. Review logs for initialization errors
 4. Ensure required environment variables are set
-5. Verify both `SUMMARY_MCP_CALENDAR_NAME` and `SUMMARY_MCP_WEATHER_NAME` match server names in your MCP config
+5. Verify both `MCP_CALENDAR_NAME` and `MCP_WEATHER_NAME` match server names in your MCP config
 6. For npx-based servers, ensure Node.js is installed and in PATH
 
 </details>
@@ -547,7 +547,7 @@ Popular MCP servers you can configure:
 1. Verify time format: `HH:MM` (24-hour)
 2. Check timezone setting matches your location
 3. Ensure both calendar and weather MCP servers are properly configured
-4. Verify `SUMMARY_MCP_CALENDAR_NAME` and `SUMMARY_MCP_WEATHER_NAME` are set
+4. Verify `MCP_CALENDAR_NAME` and `MCP_WEATHER_NAME` are set
 5. Review logs at the scheduled time
 
 </details>

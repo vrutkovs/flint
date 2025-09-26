@@ -20,8 +20,8 @@ class Settings:
         chat_id: str,
         tz: str,
         mcp_config_path: str,
-        summary_mcp_calendar_name: str,
-        summary_mcp_weather_name: str,
+        mcp_calendar_name: str,
+        mcp_weather_name: str,
         system_instructions: str,
         rag_embedding_model: str | None = None,
         rag_location: str | None = None,
@@ -39,8 +39,8 @@ class Settings:
             chat_id: Telegram chat ID
             tz: Timezone string
             mcp_config_path: Path to MCP configuration file
-            summary_mcp_calendar_name: Name of calendar MCP for summaries
-            summary_mcp_weather_name: Name of weather MCP for summaries
+            mcp_calendar_name: Name of calendar MCP for summaries
+            mcp_weather_name: Name of weather MCP for summaries
             system_instructions: System instructions for AI model
             rag_embedding_model: Optional RAG embedding model name
             rag_location: Optional RAG data location
@@ -55,8 +55,8 @@ class Settings:
         self.chat_id: str = chat_id
         self.timezone: pytz.tzinfo.BaseTzInfo = pytz.timezone(tz)
         self.mcp_config_path: str = mcp_config_path
-        self.agenda_mcp_calendar_name: str = summary_mcp_calendar_name
-        self.agenda_mcp_weather_name: str = summary_mcp_weather_name
+        self.agenda_mcp_calendar_name: str = mcp_calendar_name
+        self.agenda_mcp_weather_name: str = mcp_weather_name
         self.user_filter: list[str] = user_filter or []
         self.genconfig: genai.types.GenerateContentConfig
         self.qa_chain: Any | None = None

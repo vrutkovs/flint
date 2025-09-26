@@ -34,8 +34,8 @@ class TestSettings:
             "chat_id": "123456789",
             "tz": "UTC",
             "mcp_config_path": "/path/to/config.yaml",
-            "summary_mcp_calendar_name": "calendar_mcp",
-            "summary_mcp_weather_name": "weather_mcp",
+            "mcp_calendar_name": "calendar_mcp",
+            "mcp_weather_name": "weather_mcp",
             "system_instructions": "You are a helpful assistant.",
             "model_name": "gemini-2.5-flash",
         }
@@ -50,8 +50,8 @@ class TestSettings:
         assert settings.chat_id == basic_settings_params["chat_id"]
         assert isinstance(settings.timezone, pytz.tzinfo.BaseTzInfo)
         assert settings.mcp_config_path == basic_settings_params["mcp_config_path"]
-        assert settings.agenda_mcp_calendar_name == basic_settings_params["summary_mcp_calendar_name"]
-        assert settings.agenda_mcp_weather_name == basic_settings_params["summary_mcp_weather_name"]
+        assert settings.agenda_mcp_calendar_name == basic_settings_params["mcp_calendar_name"]
+        assert settings.agenda_mcp_weather_name == basic_settings_params["mcp_weather_name"]
         assert settings.user_filter == []
         assert settings.qa_chain is None
 
@@ -269,8 +269,8 @@ class TestSettings:
             "chat_id": "123456789",
             "tz": "UTC",
             "mcp_config_path": "/path/to/config.yaml",
-            "summary_mcp_calendar_name": "calendar_mcp",
-            "summary_mcp_weather_name": "weather_mcp",
+            "mcp_calendar_name": "calendar_mcp",
+            "mcp_weather_name": "weather_mcp",
             "system_instructions": "You are a helpful assistant.",
             # model_name not specified, should use default
         }

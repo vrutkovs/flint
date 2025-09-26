@@ -49,8 +49,8 @@ def sample_config():
         "chat_id": "123456789",
         "tz": "UTC",
         "mcp_config_path": "/path/to/mcp/config.yaml",
-        "summary_mcp_calendar_name": "calendar",
-        "summary_mcp_weather_name": "weather",
+        "mcp_calendar_name": "calendar",
+        "mcp_weather_name": "weather",
         "model_name": "gemini-2.5-flash",
         "user_filter": ["user1", "user2"],
     }
