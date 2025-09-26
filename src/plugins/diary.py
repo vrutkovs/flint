@@ -51,6 +51,48 @@ What tasks did I complete today? List the tasks I finished today with a brief su
 """
 
 
+def replace_diary_section(existing_content: str, new_diary_section: str) -> str:
+    """Replace existing diary section with new content.
+
+    Args:
+        existing_content: Current file content
+        new_diary_section: New diary section to insert
+
+    Returns:
+        Updated file content with diary section replaced
+    """
+    if not existing_content.strip():
+        return new_diary_section.strip()
+
+    # Split content by lines to work with sections
+    lines = existing_content.split("\n")
+    result_lines = []
+    in_diary_section = False
+    diary_section_found = False
+
+    for line in lines:
+        if line.strip() == "## Diary":
+            # Start of diary section - replace with new content
+            diary_section_found = True
+            in_diary_section = True
+            result_lines.extend(new_diary_section.strip().split("\n"))
+        elif in_diary_section and line.startswith("## "):
+            # End of diary section, start of new section
+            in_diary_section = False
+            result_lines.append("")  # Add blank line before next section
+            result_lines.append(line)
+        elif not in_diary_section:
+            # Not in diary section, keep the line
+            result_lines.append(line)
+        # Skip lines that are in diary section (they get replaced)
+
+    if not diary_section_found:
+        # No diary section found, append to end
+        result_lines.extend(["", new_diary_section.strip()])
+
+    return "\n".join(result_lines)
+
+
 async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Generate and send a daily diary entry.
 
@@ -76,21 +118,19 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     settings: Settings = job_data.__getattribute__("settings")
-    genai_client: genai.Client = job_data.__getattribute__("genai_client")
 
     settings.logger.info("Starting diary entry generation")
 
     # Get current date and time
     now = datetime.datetime.now(settings.timezone)
     date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M")
 
     mcps: MCPConfigReader = MCPConfigReader(settings)
     mcps.reload_config()
 
     # Fetch calendar data for context
     calendar_data: str | None = None
-    if hasattr(settings, 'agenda_mcp_calendar_name') and settings.agenda_mcp_calendar_name:
+    if hasattr(settings, "agenda_mcp_calendar_name") and settings.agenda_mcp_calendar_name:
         calendar_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
         if calendar_mcp_config:
             try:
@@ -112,7 +152,7 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Fetch tasks done data for context
     tasks_done: str | None = None
-    if hasattr(settings, 'agenda_mcp_todoist_name') and settings.agenda_mcp_todoist_name:
+    if hasattr(settings, "agenda_mcp_todoist_name") and settings.agenda_mcp_todoist_name:
         todoist_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_todoist_name)
         if todoist_mcp_config:
             try:
@@ -134,9 +174,8 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Create the diary entry
     diary_entry: str = DIARY_TEMPLATE.format(
-        date=date_str,
         calendar_data=calendar_data or "No calendar events recorded for today",
-        tasks_done=tasks_done or "No tasks completed today"
+        tasks_done=tasks_done or "No tasks completed today",
     )
 
     settings.logger.info("Diary entry created")
@@ -159,13 +198,25 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     filename: str = f"{date_str}.md"
     file_path: Path = notes_path / filename
 
-    # Write the diary entry to the file
+    # Read existing file content if it exists
+    existing_content: str = ""
+    if file_path.exists():
+        try:
+            with open(file_path, encoding="utf-8") as file:
+                existing_content = file.read()
+        except Exception as e:
+            settings.logger.error(f"Failed to read existing file {file_path}: {e}")
+            return
+
+    # Replace or add diary section
+    updated_content = replace_diary_section(existing_content, diary_entry)
+
+    # Write the updated content to the file
     try:
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(diary_entry)
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(updated_content)
 
         settings.logger.info(f"Daily diary entry written to {file_path}")
-
     except Exception as e:
         settings.logger.error(f"Failed to write diary entry to file: {e}")
-        return
+    return

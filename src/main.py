@@ -156,7 +156,9 @@ if SCHEDULED_AGENDA_TIME and MCP_CALENDAR_NAME and MCP_WEATHER_NAME:
     )
     log.info(f"Scheduled agenda updated at {schedule_time}")
 elif SCHEDULED_AGENDA_TIME:
-    log.warning("SCHEDULED_AGENDA_TIME is set but MCP_CALENDAR_NAME or MCP_WEATHER_NAME is missing. Daily agenda will not be scheduled.")
+    log.warning(
+        "SCHEDULED_AGENDA_TIME is set but MCP_CALENDAR_NAME or MCP_WEATHER_NAME is missing. Daily agenda will not be scheduled."
+    )
 
 # Create scheduler for diary entries
 if SCHEDULED_DIARY_TIME and MCP_CALENDAR_NAME and MCP_TODOIST_NAME and settings.daily_note_folder:
@@ -195,7 +197,9 @@ elif SCHEDULED_DIARY_TIME:
         missing_vars.append("MCP_TODOIST_NAME")
     if not settings.daily_note_folder:
         missing_vars.append("DAILY_NOTE_FOLDER")
-    log.warning(f"SCHEDULED_DIARY_TIME is set but the following required variables are missing: {', '.join(missing_vars)}. Diary scheduling will not be enabled.")
+    log.warning(
+        f"SCHEDULED_DIARY_TIME is set but the following required variables are missing: {', '.join(missing_vars)}. Diary scheduling will not be enabled."
+    )
 
 # Start the bot
 try:

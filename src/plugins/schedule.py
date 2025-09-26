@@ -57,7 +57,9 @@ acknowledge it cheerfully or omit it gracefully.
 CALENDAR_MCP_PROMPT: Final[str] = (
     "List upcoming calendar events today in my primary calendar in Europe/Prague timezone?"
 )
-TODOIST_MCP_PROMPT: Final[str] = "What tasks did I complete yesterday? List the tasks I finished yesterday with a brief summary."
+TODOIST_MCP_PROMPT: Final[str] = (
+    "What tasks did I complete yesterday? List the tasks I finished yesterday with a brief summary."
+)
 
 
 async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -87,7 +89,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Fetch tasks done data for context
     tasks_done: str | None = None
-    if hasattr(settings, 'agenda_mcp_todoist_name') and settings.agenda_mcp_todoist_name:
+    if hasattr(settings, "agenda_mcp_todoist_name") and settings.agenda_mcp_todoist_name:
         todoist_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_todoist_name)
         if not todoist_mcp_config:
             settings.logger.error("Todoist MCP configuration not found")
@@ -113,7 +115,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Fetch calendar data for context
     calendar_data: str | None = None
-    if hasattr(settings, 'agenda_mcp_calendar_name') and settings.agenda_mcp_calendar_name:
+    if hasattr(settings, "agenda_mcp_calendar_name") and settings.agenda_mcp_calendar_name:
         calendar_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
         if not calendar_mcp_config:
             settings.logger.error("Calendar MCP configuration not found")
@@ -139,7 +141,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     prompt: str = PROMPT_TEMPLATE.format(
         tasks_done=tasks_done or "No tasks completed yesterday",
-        calendar_data=calendar_data or "No calendar events scheduled for today"
+        calendar_data=calendar_data or "No calendar events scheduled for today",
     )
     settings.logger.info(f"Prompt sent:\n{prompt}")
 

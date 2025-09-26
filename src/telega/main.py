@@ -10,7 +10,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from plugins import photo
-
 from plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
 from telega.settings import Settings
 
