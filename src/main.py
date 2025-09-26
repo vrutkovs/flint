@@ -126,7 +126,6 @@ for mcp_name in telega.mcps.get_enabled_mcps():
     app.add_handler(CommandHandler(mcp_name, telega.handle_mcp_message))
 
 app.add_handler(CommandHandler("list_mcps", telega.handle_list_mcps_message))
-app.add_handler(CommandHandler("diary", telega.handle_diary_command))
 app.add_handler(CommandHandler("rag", telega.handle_rag_request))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, telega.handle_text_message))
 log.info("Registered handler for Gemini")

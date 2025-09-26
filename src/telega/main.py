@@ -329,43 +329,6 @@ class Telega:
                 f"Sorry, I couldn't process your message. See logs for update ID: {update.update_id}",
             )
 
-    async def handle_diary_command(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
-        """
-        Handle /diary command to generate a manual diary entry.
-
-        Args:
-            update: Telegram update object
-            _context: Telegram context object (unused)
-        """
-        # Check if user is allowed to use the bot
-        if not await self.is_user_allowed(update):
-            return
-
-        if not update.message:
-            return
-
-        try:
-            self.settings.logger.info("Processing diary command", update_id=update.update_id)
-
-            # Generate diary entry
-            diary_entry = await generate_diary_entry_manual(
-                settings=self.settings
-            )
-
-            # Reply with the generated diary entry
-            await update.message.reply_text(
-                text=diary_entry,
-                parse_mode="Markdown"
-            )
-
-        except Exception:
-            err: EventDict = format_exc_info(self.settings.logger, "exception", {"exc_info": True})
-            self.settings.logger.error("Error generating diary entry", error=err, update_id=update.update_id)
-            await self.reply_to_message(
-                update,
-                f"Sorry, I encountered an error generating your diary entry. See logs for update ID: {update.update_id}",
-            )
-
     async def handle_rag_request(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """
         Handle requests to RAG database.
