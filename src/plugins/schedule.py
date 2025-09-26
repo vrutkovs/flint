@@ -37,14 +37,14 @@ character.
 
 Avoid using markdown formatting. Use extra whitelines and line breaks to enhance readability.
 
-Its important to mention completed tasks from yesterday. Condense task data into no more than three sentences.
+Its important to mention unusual weather conditions. Condense weather data into no more than three sentences.
 
 Condense calendar data into a list, no more than three sentences.
 
 Good morning! Here is your morning briefing.
 
-Tasks Completed Yesterday:
-    {tasks_done}
+Weather Update:
+    {weather_data}
 
 Upcoming Calendar Events (next 24 hours):
     {calendar_data}
@@ -57,9 +57,7 @@ acknowledge it cheerfully or omit it gracefully.
 CALENDAR_MCP_PROMPT: Final[str] = (
     "List upcoming calendar events today in my primary calendar in Europe/Prague timezone?"
 )
-TODOIST_MCP_PROMPT: Final[str] = (
-    "What tasks did I complete yesterday? List the tasks I finished yesterday with a brief summary."
-)
+WEATHER_MCP_PROMPT: Final[str] = "What is the weather like in Brno today?"
 
 
 async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -87,33 +85,24 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
     mcps: MCPConfigReader = MCPConfigReader(settings)
     mcps.reload_config()
 
-    # Fetch tasks done data for context
-    tasks_done: str | None = None
-    if hasattr(settings, "agenda_mcp_todoist_name") and settings.agenda_mcp_todoist_name:
-        todoist_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_todoist_name)
-        if not todoist_mcp_config:
-            settings.logger.error("Todoist MCP configuration not found")
-            tasks_done = None
-        else:
-            try:
-                server_params: StdioServerParameters = await todoist_mcp_config.get_server_params()
-                todoist_mcp: MCPClient = MCPClient(
-                    name=todoist_mcp_config.name,
-                    server_params=server_params,
-                    logger=settings.logger,
-                )
-                if todoist_mcp is None:
-                    pass
-                else:
-                    tasks_done = await todoist_mcp.get_response(settings=settings, prompt=TODOIST_MCP_PROMPT)
-            except Exception as e:
-                settings.logger.error(f"Failed to fetch Todoist data: {e}")
-                tasks_done = None
-        settings.logger.info(f"Todoist data fetched: {tasks_done}")
+    weather_data: str | None = None
+    weather_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_weather_name)
+    if not weather_mcp_config:
+        settings.logger.error("Weather MCP configuration not found")
+        weather_data = None
     else:
-        settings.logger.info("Todoist MCP not configured, skipping tasks data")
+        server_params: StdioServerParameters = await weather_mcp_config.get_server_params()
+        weather_mcp: MCPClient = MCPClient(
+            name=weather_mcp_config.name,
+            server_params=server_params,
+            logger=settings.logger,
+        )
+        if weather_mcp is None:
+            pass
+        else:
+            weather_data = await weather_mcp.get_response(settings=settings, prompt=WEATHER_MCP_PROMPT)
+    settings.logger.info(f"Weather data fetched: {weather_data}")
 
-    # Fetch calendar data for context
     calendar_data: str | None = None
     if hasattr(settings, "agenda_mcp_calendar_name") and settings.agenda_mcp_calendar_name:
         calendar_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
@@ -121,26 +110,22 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
             settings.logger.error("Calendar MCP configuration not found")
             calendar_data = None
         else:
-            try:
-                server_params = await calendar_mcp_config.get_server_params()
-                calendar_mcp: MCPClient = MCPClient(
-                    name=calendar_mcp_config.name,
-                    server_params=server_params,
-                    logger=settings.logger,
-                )
-                if calendar_mcp is None:
-                    pass
-                else:
-                    calendar_data = await calendar_mcp.get_response(settings=settings, prompt=CALENDAR_MCP_PROMPT)
-            except Exception as e:
-                settings.logger.error(f"Failed to fetch calendar data: {e}")
-                calendar_data = None
+            server_params = await calendar_mcp_config.get_server_params()
+            calendar_mcp: MCPClient = MCPClient(
+                name=calendar_mcp_config.name,
+                server_params=server_params,
+                logger=settings.logger,
+            )
+            if calendar_mcp is None:
+                pass
+            else:
+                calendar_data = await calendar_mcp.get_response(settings=settings, prompt=CALENDAR_MCP_PROMPT)
         settings.logger.info(f"Calendar data fetched: {calendar_data}")
     else:
         settings.logger.info("Calendar MCP not configured, skipping calendar data")
 
     prompt: str = PROMPT_TEMPLATE.format(
-        tasks_done=tasks_done or "No tasks completed yesterday",
+        weather_data=weather_data or "No weather data available",
         calendar_data=calendar_data or "No calendar events scheduled for today",
     )
     settings.logger.info(f"Prompt sent:\n{prompt}")

@@ -36,6 +36,7 @@ class TestSettings:
             "mcp_config_path": "/path/to/config.yaml",
             "mcp_calendar_name": "calendar_mcp",
             "mcp_weather_name": "weather_mcp",
+            "mcp_todoist_name": "todoist_mcp",
             "system_instructions": "You are a helpful assistant.",
             "model_name": "gemini-2.5-flash",
         }
@@ -52,6 +53,7 @@ class TestSettings:
         assert settings.mcp_config_path == basic_settings_params["mcp_config_path"]
         assert settings.agenda_mcp_calendar_name == basic_settings_params["mcp_calendar_name"]
         assert settings.agenda_mcp_weather_name == basic_settings_params["mcp_weather_name"]
+        assert settings.agenda_mcp_todoist_name == basic_settings_params["mcp_todoist_name"]
         assert settings.user_filter == []
         assert settings.qa_chain is None
 
@@ -212,6 +214,7 @@ class TestSettings:
             "mcp_config_path",
             "agenda_mcp_calendar_name",
             "agenda_mcp_weather_name",
+            "agenda_mcp_todoist_name",
             "user_filter",
             "genconfig",
             "qa_chain",
@@ -271,6 +274,7 @@ class TestSettings:
             "mcp_config_path": "/path/to/config.yaml",
             "mcp_calendar_name": "calendar_mcp",
             "mcp_weather_name": "weather_mcp",
+            "mcp_todoist_name": "todoist_mcp",
             "system_instructions": "You are a helpful assistant.",
             # model_name not specified, should use default
         }

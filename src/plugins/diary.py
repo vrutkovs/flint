@@ -43,11 +43,15 @@ DIARY_CALENDAR_PROMPT: Final[str] = """
 Summarize what happened today in my calendar - list completed events and meetings from today only.
 Output them in format:
 * <time> - <short one sentence description of the event>
+
+IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF EVENTS AND MEETINGS.
 """
 
 DIARY_TODOIST_PROMPT: Final[str] = """
 What tasks did I complete today? List the tasks I finished today with a brief summary. Format:
 * <time when completed> - <short one sentence description of the task>
+
+IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF COMPLETED TASKS.
 """
 
 

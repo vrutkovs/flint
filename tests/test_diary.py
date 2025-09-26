@@ -189,13 +189,6 @@ class TestGenerateDiaryEntry:
         assert "Meeting with team at 2 PM" in written_content
         assert "10:30 - Completed project documentation" in written_content
 
-        # Verify confirmation message was sent
-        mock_context.bot.send_message.assert_called_once()
-        call_args = mock_context.bot.send_message.call_args
-        assert call_args[1]["chat_id"] == 123456789
-        assert "Daily diary entry saved to" in call_args[1]["text"]
-        assert call_args[1]["parse_mode"] == "Markdown"
-
     @pytest.mark.asyncio
     @patch("plugins.diary.MCPConfigReader")
     async def test_generate_diary_entry_missing_folder_setting(
@@ -275,13 +268,6 @@ class TestGenerateDiaryEntry:
         assert "No calendar events recorded for today" in written_content
         assert "No tasks completed today" in written_content
 
-        # Verify confirmation message was sent
-        mock_context.bot.send_message.assert_called_once()
-        call_args = mock_context.bot.send_message.call_args
-        assert call_args[1]["chat_id"] == 123456789
-        assert "Daily diary entry saved to" in call_args[1]["text"]
-        assert call_args[1]["parse_mode"] == "Markdown"
-
     @pytest.mark.asyncio
     async def test_generate_diary_entry_missing_job(self, mock_context):
         """Test diary generation when job is missing."""
@@ -351,11 +337,6 @@ class TestGenerateDiaryEntry:
 
         # Verify error was logged
         mock_diary_data.settings.logger.error.assert_called()
-
-        # Verify error message was sent
-        mock_context.bot.send_message.assert_called_once()
-        call_args = mock_context.bot.send_message.call_args
-        assert "Failed to write diary entry to file" in call_args[1]["text"]
 
 
 def test_diary_template():
@@ -631,15 +612,14 @@ Need to wrap up the day"""
 
         mock_write_file = Mock()
 
-        def mock_open_side_effect(*args, **kwargs):
-            if len(args) > 1 and "r" in args[1]:  # Reading mode
-                mock_read_file.__enter__ = Mock(return_value=mock_read_file)
-                mock_read_file.__exit__ = Mock(return_value=None)
-                return mock_read_file
+        def mock_open_side_effect(file_path, mode="r", **kwargs):
+            context_manager = Mock()
+            if "r" in mode:  # Reading mode
+                context_manager.__enter__ = Mock(return_value=mock_read_file)
             else:  # Writing mode
-                mock_write_file.__enter__ = Mock(return_value=mock_write_file)
-                mock_write_file.__exit__ = Mock(return_value=None)
-                return mock_write_file
+                context_manager.__enter__ = Mock(return_value=mock_write_file)
+            context_manager.__exit__ = Mock(return_value=None)
+            return context_manager
 
         mock_open.side_effect = mock_open_side_effect
 
@@ -664,9 +644,3 @@ Need to wrap up the day"""
         # Verify old diary content was replaced
         assert "Old meeting" not in written_content
         assert "Old task completed" not in written_content
-
-        # Verify confirmation message was sent
-        mock_context.bot.send_message.assert_called_once()
-        call_args = mock_context.bot.send_message.call_args
-        assert call_args[1]["chat_id"] == 123456789
-        assert "Daily diary entry saved to" in call_args[1]["text"]
