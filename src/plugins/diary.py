@@ -194,3 +194,96 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
         # Send error message to user
         error_message = f"Sorry, I couldn't generate your diary entry for {date_str}. Please check the logs for more details."
         await context.bot.send_message(chat_id=chat_id, text=error_message)
+
+
+async def generate_diary_entry_manual(settings: Settings) -> str:
+    """Generate a diary entry manually for immediate display.
+
+    Args:
+        settings: Settings object containing configuration
+
+    Returns:
+        Generated diary entry text or error message
+    """
+    settings.logger.info("Generating manual diary entry")
+
+    # Get current date and time
+    now = datetime.datetime.now(settings.timezone)
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
+
+    mcps: MCPConfigReader = MCPConfigReader(settings)
+    mcps.reload_config()
+
+    # Fetch calendar data for context
+    calendar_data: str | None = None
+    if hasattr(settings, 'agenda_mcp_calendar_name') and settings.agenda_mcp_calendar_name:
+        calendar_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
+        if calendar_mcp_config:
+            try:
+                server_params = await calendar_mcp_config.get_server_params()
+                calendar_mcp: MCPClient = MCPClient(
+                    name=calendar_mcp_config.name,
+                    server_params=server_params,
+                    logger=settings.logger,
+                )
+                calendar_data = await calendar_mcp.get_response(settings=settings, prompt=DIARY_CALENDAR_PROMPT)
+                settings.logger.info(f"Calendar data fetched for manual diary: {calendar_data}")
+            except Exception as e:
+                settings.logger.error(f"Failed to fetch calendar data: {e}")
+                calendar_data = None
+        else:
+            settings.logger.warning("Calendar MCP configuration not found for manual diary")
+
+    # Fetch tasks done data for context
+    tasks_done: str | None = None
+    if hasattr(settings, 'agenda_mcp_todoist_name') and settings.agenda_mcp_todoist_name:
+        todoist_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_todoist_name)
+        if todoist_mcp_config:
+            try:
+                server_params = await todoist_mcp_config.get_server_params()
+                todoist_mcp: MCPClient = MCPClient(
+                    name=todoist_mcp_config.name,
+                    server_params=server_params,
+                    logger=settings.logger,
+                )
+                tasks_done = await todoist_mcp.get_response(settings=settings, prompt=DIARY_TODOIST_PROMPT)
+                settings.logger.info(f"Todoist data fetched for manual diary: {tasks_done}")
+            except Exception as e:
+                settings.logger.error(f"Failed to fetch Todoist data: {e}")
+                tasks_done = None
+        else:
+            settings.logger.warning("Todoist MCP configuration not found for manual diary")
+
+    # Create the diary prompt
+    prompt: str = DIARY_PROMPT_TEMPLATE.format(
+        date=date_str,
+        time=time_str,
+        calendar_data=calendar_data or "No calendar events recorded for today",
+        tasks_done=tasks_done or "No tasks completed today"
+    )
+
+    settings.logger.info(f"Manual diary prompt created for {date_str}")
+
+    try:
+        # Generate diary entry using AI
+        response = await settings.genai_client.aio.models.generate_content(
+            model=settings.model_name,
+            contents=cast(list[str | Image.Image | Any | Any], [prompt]),
+            config=settings.genconfig,
+        )
+
+        diary_text: str | None = response.text
+        if not diary_text:
+            settings.logger.error("Empty response from AI when generating manual diary entry")
+            return f"Sorry, I couldn't generate your diary entry for {date_str}. The AI response was empty."
+
+        # Format the final diary entry with a header
+        diary_entry = f"# Diary Entry - {date_str}\n\n{diary_text}"
+
+        settings.logger.info(f"Manual diary entry generated successfully for {date_str}")
+        return diary_entry
+
+    except Exception as e:
+        settings.logger.error(f"Error generating manual diary entry: {e}")
+        return f"Sorry, I couldn't generate your diary entry for {date_str}. Error: {str(e)}"
