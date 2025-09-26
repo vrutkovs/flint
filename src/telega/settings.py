@@ -22,6 +22,7 @@ class Settings:
         mcp_config_path: str,
         mcp_calendar_name: str,
         mcp_weather_name: str,
+        mcp_todoist_name: str,
         system_instructions: str,
         rag_embedding_model: str | None = None,
         rag_location: str | None = None,
@@ -41,6 +42,7 @@ class Settings:
             mcp_config_path: Path to MCP configuration file
             mcp_calendar_name: Name of calendar MCP for summaries
             mcp_weather_name: Name of weather MCP for summaries
+            mcp_todoist_name: Name of Todoist MCP for summaries
             system_instructions: System instructions for AI model
             rag_embedding_model: Optional RAG embedding model name
             rag_location: Optional RAG data location
@@ -57,6 +59,7 @@ class Settings:
         self.mcp_config_path: str = mcp_config_path
         self.agenda_mcp_calendar_name: str = mcp_calendar_name
         self.agenda_mcp_weather_name: str = mcp_weather_name
+        self.agenda_mcp_todoist_name: str = mcp_todoist_name
         self.user_filter: list[str] = user_filter or []
         self.genconfig: genai.types.GenerateContentConfig
         self.qa_chain: Any | None = None

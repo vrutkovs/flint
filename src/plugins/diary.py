@@ -41,15 +41,16 @@ Guidelines for the diary entry:
 2. Use markdown formatting with proper headers and structure
 3. Include sections for:
    - A brief summary of the day
-   - Notable events or moments
-   - Thoughts and feelings
+   - Notable events or moments (including tasks accomplished)
+   - Thoughts and feelings about accomplishments and progress
    - Goals or plans for tomorrow
-   - A gratitude note
+   - A gratitude note (acknowledge productivity and achievements)
 
 4. Keep the tone personal, reflective, and authentic
 5. The entry should feel like a genuine personal reflection
 6. Use markdown formatting like headers (##), lists (-), and emphasis (*text*)
 7. Length should be thoughtful but concise (200-400 words)
+8. When incorporating completed tasks, reflect on their significance and how they made you feel
 
 Based on any available information about today's events, create a meaningful diary entry.
 If no specific events are provided, create a template-style entry that encourages reflection.
@@ -57,20 +58,20 @@ If no specific events are provided, create a template-style entry that encourage
 Calendar events from today:
 {calendar_data}
 
-Weather information:
-{weather_data}
+Tasks completed today:
+{tasks_done}
 
 Current date: {date}
 Current time: {time}
 
-Please generate a complete diary entry in markdown format.
+Please generate a complete diary entry in markdown format that thoughtfully weaves together calendar events and completed tasks into a cohesive reflection on the day.
 """
 
 DIARY_CALENDAR_PROMPT: Final[str] = (
     "Summarize what happened today in my calendar - list completed events and meetings from today only"
 )
 
-DIARY_WEATHER_PROMPT: Final[str] = "What was the weather like today? Provide a brief summary."
+DIARY_TODOIST_PROMPT: Final[str] = "What tasks did I complete today? List the tasks I finished today with a brief summary."
 
 
 async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -130,32 +131,32 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
         else:
             settings.logger.warning("Calendar MCP configuration not found for diary")
 
-    # Fetch weather data for context
-    weather_data: str | None = None
-    if hasattr(settings, 'agenda_mcp_weather_name') and settings.agenda_mcp_weather_name:
-        weather_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_weather_name)
-        if weather_mcp_config:
+    # Fetch tasks done data for context
+    tasks_done: str | None = None
+    if hasattr(settings, 'agenda_mcp_todoist_name') and settings.agenda_mcp_todoist_name:
+        todoist_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_todoist_name)
+        if todoist_mcp_config:
             try:
-                server_params = await weather_mcp_config.get_server_params()
-                weather_mcp: MCPClient = MCPClient(
-                    name=weather_mcp_config.name,
+                server_params = await todoist_mcp_config.get_server_params()
+                todoist_mcp: MCPClient = MCPClient(
+                    name=todoist_mcp_config.name,
                     server_params=server_params,
                     logger=settings.logger,
                 )
-                weather_data = await weather_mcp.get_response(settings=settings, prompt=DIARY_WEATHER_PROMPT)
-                settings.logger.info(f"Weather data fetched for diary: {weather_data}")
+                tasks_done = await todoist_mcp.get_response(settings=settings, prompt=DIARY_TODOIST_PROMPT)
+                settings.logger.info(f"Todoist data fetched for diary: {tasks_done}")
             except Exception as e:
-                settings.logger.error(f"Failed to fetch weather data: {e}")
-                weather_data = None
+                settings.logger.error(f"Failed to fetch Todoist data: {e}")
+                tasks_done = None
         else:
-            settings.logger.warning("Weather MCP configuration not found for diary")
+            settings.logger.warning("Todoist MCP configuration not found for diary")
 
     # Create the diary prompt
     prompt: str = DIARY_PROMPT_TEMPLATE.format(
         date=date_str,
         time=time_str,
         calendar_data=calendar_data or "No calendar events recorded for today",
-        weather_data=weather_data or "No weather information available"
+        tasks_done=tasks_done or "No tasks completed today"
     )
 
     settings.logger.info(f"Diary prompt created for {date_str}")

@@ -64,6 +64,11 @@ if not MCP_WEATHER_NAME:
     print("MCP_WEATHER_NAME environment variable is required")
     sys.exit(1)
 
+MCP_TODOIST_NAME: str | None = os.environ.get("MCP_TODOIST_NAME")
+if not MCP_TODOIST_NAME:
+    print("MCP_TODOIST_NAME environment variable is required")
+    sys.exit(1)
+
 SYSTEM_INSTRUCTIONS: str = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
 RAG_EMBEDDING_MODEL: str | None = os.environ.get("RAG_EMBEDDING_MODEL")
@@ -98,6 +103,7 @@ settings: Settings = Settings(
     mcp_config_path=MCP_CONFIG_PATH,
     mcp_calendar_name=MCP_CALENDAR_NAME,
     mcp_weather_name=MCP_WEATHER_NAME,
+    mcp_todoist_name=MCP_TODOIST_NAME,
     user_filter=USER_FILTER,
     system_instructions=SYSTEM_INSTRUCTIONS,
     rag_embedding_model=RAG_EMBEDDING_MODEL,
