@@ -55,19 +55,8 @@ if not MCP_CONFIG_PATH:
     sys.exit(1)
 
 MCP_CALENDAR_NAME: str | None = os.environ.get("MCP_CALENDAR_NAME")
-if not MCP_CALENDAR_NAME:
-    print("MCP_CALENDAR_NAME environment variable is required")
-    sys.exit(1)
-
-MCP_WEATHER_NAME: str | None = os.environ.get("MCP_WEATHER_NAME")
-if not MCP_WEATHER_NAME:
-    print("MCP_WEATHER_NAME environment variable is required")
-    sys.exit(1)
-
 MCP_TODOIST_NAME: str | None = os.environ.get("MCP_TODOIST_NAME")
-if not MCP_TODOIST_NAME:
-    print("MCP_TODOIST_NAME environment variable is required")
-    sys.exit(1)
+MCP_WEATHER_NAME: str | None = os.environ.get("MCP_WEATHER_NAME")
 
 SYSTEM_INSTRUCTIONS: str = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
@@ -101,9 +90,9 @@ settings: Settings = Settings(
     chat_id=CHAT_ID,
     tz=TZ,
     mcp_config_path=MCP_CONFIG_PATH,
-    mcp_calendar_name=MCP_CALENDAR_NAME,
-    mcp_weather_name=MCP_WEATHER_NAME,
-    mcp_todoist_name=MCP_TODOIST_NAME,
+    mcp_calendar_name=MCP_CALENDAR_NAME or "",
+    mcp_todoist_name=MCP_TODOIST_NAME or "",
+    mcp_weather_name=MCP_WEATHER_NAME or "",
     user_filter=USER_FILTER,
     system_instructions=SYSTEM_INSTRUCTIONS,
     rag_embedding_model=RAG_EMBEDDING_MODEL,
@@ -145,7 +134,7 @@ log.info("Registered handler for Gemini")
 log.info("Message handlers registered")
 
 # Create scheduler for periodic tasks
-if SCHEDULED_AGENDA_TIME:
+if SCHEDULED_AGENDA_TIME and MCP_CALENDAR_NAME and MCP_WEATHER_NAME:
     job_queue = app.job_queue
     if not job_queue:
         log.error("Failed to create job queue")
@@ -164,9 +153,11 @@ if SCHEDULED_AGENDA_TIME:
         data=scheduleData,
     )
     log.info(f"Scheduled agenda updated at {schedule_time}")
+elif SCHEDULED_AGENDA_TIME:
+    log.warning("SCHEDULED_AGENDA_TIME is set but MCP_CALENDAR_NAME or MCP_WEATHER_NAME is missing. Daily agenda will not be scheduled.")
 
 # Create scheduler for diary entries
-if SCHEDULED_DIARY_TIME:
+if SCHEDULED_DIARY_TIME and MCP_CALENDAR_NAME and MCP_TODOIST_NAME:
     if GOOGLE_OAUTH_CREDENTIALS and not os.path.exists(GOOGLE_OAUTH_CREDENTIALS):
         log.warning(f"Google OAuth credentials file not found: {GOOGLE_OAUTH_CREDENTIALS}")
         log.warning("Diary feature will work with limited functionality (no calendar data)")
@@ -194,6 +185,8 @@ if SCHEDULED_DIARY_TIME:
         log.info(f"Google Calendar integration enabled using: {GOOGLE_OAUTH_CREDENTIALS}")
     else:
         log.info("GOOGLE_OAUTH_CREDENTIALS not set - diary will work without calendar data")
+elif SCHEDULED_DIARY_TIME:
+    log.warning("SCHEDULED_DIARY_TIME is set but MCP_CALENDAR_NAME or MCP_TODOIST_NAME is missing. Diary scheduling will not be enabled.")
 
 # Start the bot
 try:

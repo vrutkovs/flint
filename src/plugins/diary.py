@@ -130,6 +130,8 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
                 calendar_data = None
         else:
             settings.logger.warning("Calendar MCP configuration not found for diary")
+    else:
+        settings.logger.info("Calendar MCP not configured, skipping calendar data")
 
     # Fetch tasks done data for context
     tasks_done: str | None = None
@@ -150,6 +152,8 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
                 tasks_done = None
         else:
             settings.logger.warning("Todoist MCP configuration not found for diary")
+    else:
+        settings.logger.info("Todoist MCP not configured, skipping tasks data")
 
     # Create the diary prompt
     prompt: str = DIARY_PROMPT_TEMPLATE.format(
@@ -234,6 +238,8 @@ async def generate_diary_entry_manual(settings: Settings) -> str:
                 calendar_data = None
         else:
             settings.logger.warning("Calendar MCP configuration not found for manual diary")
+    else:
+        settings.logger.info("Calendar MCP not configured for manual diary, skipping calendar data")
 
     # Fetch tasks done data for context
     tasks_done: str | None = None
@@ -254,6 +260,8 @@ async def generate_diary_entry_manual(settings: Settings) -> str:
                 tasks_done = None
         else:
             settings.logger.warning("Todoist MCP configuration not found for manual diary")
+    else:
+        settings.logger.info("Todoist MCP not configured for manual diary, skipping tasks data")
 
     # Create the diary prompt
     prompt: str = DIARY_PROMPT_TEMPLATE.format(

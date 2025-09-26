@@ -170,14 +170,14 @@ python src/main.py
 | `GOOGLE_API_KEY` | Google AI API key | `AIzaSyA...` |
 | `MODEL_NAME` | Gemini model variant | `gemini-2.0-flash-exp` |
 | `MCP_CONFIG_PATH` | MCP config file path | `/home/user/.config/flint/mcp.yaml` |
-| `MCP_CALENDAR_NAME` | Calendar MCP server name | `calendar` |
-| `MCP_WEATHER_NAME` | Weather MCP server name | `weather` |
-| `MCP_TODOIST_NAME` | Todoist MCP server name | `todoist` |
 
 #### Optional Settings
 
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
+| `MCP_CALENDAR_NAME` | Calendar MCP server name (required for daily briefings) | None | `calendar` |
+| `MCP_WEATHER_NAME` | Weather MCP server name (required for daily briefings) | None | `weather` |
+| `MCP_TODOIST_NAME` | Todoist MCP server name (required for diary entries) | None | `todoist` |
 | `SCHEDULED_AGENDA_TIME` | Daily briefing time | None | `07:30` |
 | `TZ` | Timezone | `UTC` | `Europe/London` |
 | `USER_FILTER` | Allowed usernames (comma-separated) | None | `alice,bob` |
@@ -537,7 +537,8 @@ Popular MCP servers you can configure:
 2. Check MCP server installation: `npx -y @modelcontextprotocol/server-name`
 3. Review logs for initialization errors
 4. Ensure required environment variables are set
-5. For npx-based servers, ensure Node.js is installed and in PATH
+5. Verify both `MCP_CALENDAR_NAME` and `MCP_TODOIST_NAME` match server names in your MCP config
+6. For npx-based servers, ensure Node.js is installed and in PATH
 
 </details>
 
@@ -546,9 +547,11 @@ Popular MCP servers you can configure:
 
 1. Verify time format: `HH:MM` (24-hour)
 2. Check timezone setting matches your location
-3. Ensure both calendar and Weather MCP servers are properly configured
-4. Verify `MCP_CALENDAR_NAME` and `MCP_WEATHER_NAME` are set
+3. Ensure both calendar and weather MCP servers are properly configured
+4. Verify `MCP_CALENDAR_NAME` and `MCP_WEATHER_NAME` are set (both required for scheduling)
 5. Review logs at the scheduled time
+
+**Note**: Both `MCP_CALENDAR_NAME` and `MCP_WEATHER_NAME` must be set for scheduled features to work. If either is missing, scheduling will be disabled with a warning in the logs.
 
 </details>
 
