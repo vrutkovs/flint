@@ -1,18 +1,17 @@
 """Diary plugin for generating daily diary entries in markdown format."""
 
 import datetime
-from typing import Any, Final, cast
+from pathlib import Path
+from typing import Final
 
 import structlog
 from google import genai
-from PIL import Image
 from telegram.ext import ContextTypes
 
 from plugins.mcp import (
     MCPClient,
     MCPConfigReader,
     MCPConfiguration,
-    StdioServerParameters,
 )
 from telega.settings import Settings
 
@@ -31,11 +30,12 @@ class DiaryData:
         self.genai_client: genai.Client = genai_client
 
 
-DIARY_TEMPLATE: Final[str] = """
-## Events
+DIARY_TEMPLATE: Final[str] = """## Diary
+
+### Events
 {calendar_data}
 
-## Tasks
+### Tasks
 {tasks_done}
 """
 
@@ -135,18 +135,37 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     # Create the diary entry
     diary_entry: str = DIARY_TEMPLATE.format(
         date=date_str,
-        time=time_str,
         calendar_data=calendar_data or "No calendar events recorded for today",
         tasks_done=tasks_done or "No tasks completed today"
     )
 
-    settings.logger.info(f"Diary entry created ")
+    settings.logger.info("Diary entry created")
 
-    # Send the diary entry
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=diary_entry,
-        parse_mode="Markdown"
-    )
+    # Get the daily notes folder from settings
+    daily_note_folder: str | None = settings.daily_note_folder
+    if not daily_note_folder:
+        settings.logger.error("DAILY_NOTE_FOLDER is not configured in settings")
+        return
 
-    settings.logger.info("Daily diary entry sent successfully")
+    # Create the daily notes directory if it doesn't exist
+    notes_path: Path = Path(daily_note_folder)
+    try:
+        notes_path.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        settings.logger.error(f"Failed to create daily notes directory: {e}")
+        return
+
+    # Create the filename using current date
+    filename: str = f"{date_str}.md"
+    file_path: Path = notes_path / filename
+
+    # Write the diary entry to the file
+    try:
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(diary_entry)
+
+        settings.logger.info(f"Daily diary entry written to {file_path}")
+
+    except Exception as e:
+        settings.logger.error(f"Failed to write diary entry to file: {e}")
+        return

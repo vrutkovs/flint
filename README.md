@@ -179,6 +179,8 @@ python src/main.py
 | `MCP_WEATHER_NAME` | Weather MCP server name (required for daily briefings) | None | `weather` |
 | `MCP_TODOIST_NAME` | Todoist MCP server name (required for diary entries) | None | `todoist` |
 | `SCHEDULED_AGENDA_TIME` | Daily briefing time | None | `07:30` |
+| `SCHEDULED_DIARY_TIME` | Daily diary generation time | `23:59` | `23:59` |
+| `DAILY_NOTE_FOLDER` | Directory to save daily diary entries | None | `/home/user/notes` |
 | `TZ` | Timezone | `UTC` | `Europe/London` |
 | `USER_FILTER` | Allowed usernames (comma-separated) | None | `alice,bob` |
 | `SYSTEM_INSTRUCTIONS` | Custom AI personality | Film noir detective | See below |
@@ -332,6 +334,34 @@ Your dance card for today:
 
 Another day in the city that never sleeps...
 ```
+
+#### Daily Diary
+Configure `SCHEDULED_DIARY_TIME` and `DAILY_NOTE_FOLDER` to automatically generate daily diary entries as markdown files:
+
+**Required Environment Variables:**
+- `SCHEDULED_DIARY_TIME`: Time to generate diary (default: `23:59`)
+- `DAILY_NOTE_FOLDER`: Directory where diary files will be saved
+- `MCP_CALENDAR_NAME`: Calendar MCP server for events
+- `MCP_TODOIST_NAME`: Todoist MCP server for completed tasks
+
+**Generated File Format:**
+- Filename: `YYYY-MM-DD.md` (e.g., `2024-03-05.md`)
+- Location: `$DAILY_NOTE_FOLDER/YYYY-MM-DD.md`
+
+**Example Generated Diary:**
+```markdown
+## Diary
+
+### Events
+* 09:00 - Team standup meeting completed
+* 14:00 - Client meeting in Conference Room B
+
+### Tasks
+* 10:30 - Completed project documentation review
+* 16:45 - Finished quarterly report submission
+```
+
+The bot will send a confirmation message when the diary is successfully saved.
 
 #### Understanding Message Flow
 
