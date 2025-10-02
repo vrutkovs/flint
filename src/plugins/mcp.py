@@ -96,8 +96,10 @@ class MCPClient:
             genconfig.temperature = 0
 
             # Check if env var has a custom prompt for this MCP
-            custom_prompt: str | None = os.getenv(f"MCP_{self.name}_PROMPT")
-            prompt = f"{custom_prompt}\n{prompt}" if custom_prompt else prompt.strip()
+            custom_prompt: str | None = os.getenv(f"MCP_{self.name}_PROMPT") or os.getenv(
+                f"MCP_{self.name.upper()}_PROMPT"
+            )
+            prompt = f"{custom_prompt}\n{prompt.strip()}" if custom_prompt else prompt.strip()
 
             self.logger.debug(f"MCP {self.name} running prompt: {prompt}")
             response = await settings.genai_client.aio.models.generate_content(
