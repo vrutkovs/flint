@@ -50,7 +50,7 @@ IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF EVE
 
 DIARY_TODOIST_PROMPT: Final[str] = """
 What tasks did I complete today? List the tasks I finished today with a brief summary. Format:
-* [x] <short one sentence description of the task> ✅ <date in YYYY-MM-DD format>
+* [x] [[Todoist/<task id>|<task title without special characters>] ✅ <date in YYYY-MM-DD format>
 
 IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF COMPLETED TASKS.
 """
