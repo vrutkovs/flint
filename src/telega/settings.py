@@ -101,9 +101,7 @@ class Settings:
         system_instruction_split: Sequence[str] = list(system_instructions.split("\n"))
         self.logger.info(f"System instruction initialized: {system_instruction_split}")
 
-        self.genconfig = genai.types.GenerateContentConfig(
-            system_instruction=cast(list[Any], system_instruction_split)  # pyright: ignore
-        )
+        self.genconfig = genai.types.GenerateContentConfig(system_instruction=cast(list[Any], system_instruction_split))
 
     def __set_qa_chain(
         self,

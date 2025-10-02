@@ -93,10 +93,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
             server_params=server_params,
             logger=settings.logger,
         )
-        if weather_mcp is None:
-            pass
-        else:
-            weather_data = await weather_mcp.get_response(settings=settings, prompt=WEATHER_MCP_PROMPT)
+        weather_data = await weather_mcp.get_response(settings=settings, prompt=WEATHER_MCP_PROMPT)
     settings.logger.info(f"Weather data fetched: {weather_data}")
 
     calendar_data: str | None = None
@@ -112,10 +109,7 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
                 server_params=server_params,
                 logger=settings.logger,
             )
-            if calendar_mcp is None:
-                pass
-            else:
-                calendar_data = await calendar_mcp.get_response(settings=settings, prompt=CALENDAR_MCP_PROMPT)
+            calendar_data = await calendar_mcp.get_response(settings=settings, prompt=CALENDAR_MCP_PROMPT)
         settings.logger.info(f"Calendar data fetched: {calendar_data}")
     else:
         settings.logger.info("Calendar MCP not configured, skipping calendar data")

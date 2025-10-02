@@ -11,6 +11,13 @@ from PIL import Image
 
 from telega.settings import Settings
 
+__all__ = [
+    "MCPClient",
+    "MCPConfigReader",
+    "MCPConfiguration",
+    "StdioServerParameters",
+]
+
 
 @dataclass
 class MCPConfiguration:

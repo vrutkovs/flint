@@ -3,7 +3,7 @@
 import io
 from typing import Any, cast
 
-from chatgpt_md_converter import telegram_format
+from chatgpt_md_converter import telegram_format  # type: ignore[import-not-found]
 from PIL import Image
 from structlog.processors import format_exc_info
 from structlog.types import EventDict
@@ -273,10 +273,7 @@ class Telega:
                     server_params=server_params,
                     logger=self.settings.logger,
                 )
-                if mcp is None:
-                    raise ValueError(f"MCP {tool_name} cannot be created")
-                else:
-                    reply_text: str | None = await mcp.get_response(settings=self.settings, prompt=tool_prompt)
+                reply_text: str | None = await mcp.get_response(settings=self.settings, prompt=tool_prompt)
             self.settings.logger.error(f"MCP {tool_name} response: {reply_text}")
 
             if not reply_text:
