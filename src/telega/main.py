@@ -3,11 +3,12 @@
 import io
 from typing import Any, cast
 
+from chatgpt_md_converter import telegram_format
 from PIL import Image
 from structlog.processors import format_exc_info
 from structlog.types import EventDict
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ExtBot
 
 from plugins import photo
 from plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
@@ -102,6 +103,25 @@ class Telega:
 
         return True
 
+    async def _convert_markdown_to_telegram_html(self, text: str) -> str:
+        return telegram_format(text.strip())
+
+    async def send_message(self, bot: ExtBot[None], chat_id: int, text: str) -> None:
+        """
+        Send a message to the user.
+
+        Args:
+            text: Text to send
+        """
+        converted_text = await self._convert_markdown_to_telegram_html(text)
+        try:
+            await bot.send_message(chat_id=chat_id, text=converted_text)
+        except Exception as e:
+            self.settings.logger.error("Failed to send message", error=str(e))
+            # Attempt to send a new reply with unicode characters stripped
+            clean_text = converted_text.encode("ascii", "ignore").decode("ascii")
+            await bot.send_message(chat_id=chat_id, text=clean_text)
+
     async def reply_to_message(self, update: Update, text: str) -> None:
         """
         Reply to a message with a text. This renders the text as Markdown with necessary escaping.
@@ -113,11 +133,20 @@ class Telega:
         if update.message is None:
             return
 
-        await update.message.reply_text(
-            text=text,
-            reply_to_message_id=update.message.message_id,
-            # parse_mode="Markdown",
-        )
+        converted_text = await self._convert_markdown_to_telegram_html(text)
+        try:
+            await update.message.reply_text(
+                text=converted_text,
+                reply_to_message_id=update.message.message_id,
+            )
+        except Exception as e:
+            self.settings.logger.error("Failed to reply to message", update_id=update.update_id, error=str(e))
+            # Attempt to send a new reply with unicode characters stripped
+            clean_text = converted_text.encode("ascii", "ignore").decode("ascii")
+            await update.message.reply_text(
+                text=clean_text,
+                reply_to_message_id=update.message.message_id,
+            )
 
     async def handle_photo_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """

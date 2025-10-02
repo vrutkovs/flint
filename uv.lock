@@ -299,6 +299,15 @@ wheels = [
 ]
 
 [[package]]
+name = "chatgpt-md-converter"
+version = "0.3.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/e6/a5a39864b1f6fbb05ede7ee46b5b982e4ddd4cfa4c85bc78cd956495f680/chatgpt_md_converter-0.3.10.tar.gz", hash = "sha256:3b39544aae652c453d623e14264d2809005b462bb75814b240fa4eea26e229fd", size = 22901, upload-time = "2025-09-24T18:26:15.224Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9f/6a/b9c8e7fcfd6c6a7c9a73fb42d5cfab37568731b2c052eeba5c2c73ce9706/chatgpt_md_converter-0.3.10-py3-none-any.whl", hash = "sha256:248c888157d0ea637dd77eed06aaf27af121f59e88b19aa75f9150026c8586bf", size = 17705, upload-time = "2025-09-24T18:26:14.16Z" },
+]
+
+[[package]]
 name = "chromadb"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -575,6 +584,7 @@ name = "flint"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "chatgpt-md-converter" },
     { name = "google-genai" },
     { name = "langchain-chroma" },
     { name = "langchain-community" },
@@ -609,6 +619,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "chatgpt-md-converter", specifier = ">=0.3.10" },
     { name = "faker", marker = "extra == 'test'", specifier = ">=25.0.0" },
     { name = "google-genai", specifier = ">=1.31.0" },
     { name = "langchain-chroma", specifier = ">=0.2.5" },

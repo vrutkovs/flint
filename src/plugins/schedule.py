@@ -136,5 +136,5 @@ async def send_agenda(context: ContextTypes.DEFAULT_TYPE) -> None:
         settings.logger.error("Empty response from AI when generating agenda")
         raise ValueError("Empty response from AI")
 
-    settings.logger.info(f"Agenda sent:\n{text}")
-    await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+    settings.logger.info(f"Agenda prepared:\n{text}")
+    await settings.send_message(context.bot, chat_id, text)

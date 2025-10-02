@@ -107,6 +107,7 @@ log.info("Settings instance created")
 
 # Create Telega instance
 telega: Telega = Telega(settings=settings)
+settings.set_send_message(telega.send_message)
 log.info("Telega instance created")
 
 # Create Telegram application

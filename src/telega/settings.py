@@ -1,17 +1,20 @@
 """Settings module for Telega bot configuration."""
 
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, cast
 
 import pytz
 import structlog
 from google import genai
+from telegram.ext import ExtBot
 
 from plugins.rag import prepare_rag_tool
 
 
 class Settings:
     """Settings class for configuring Telega bot with genai client, logger, and model."""
+
+    _send_message: Callable[[ExtBot[None], int, str], Awaitable[None]] | None = None
 
     def __init__(
         self,
@@ -75,6 +78,17 @@ class Settings:
     def __repr__(self) -> str:
         """Return string representation of Settings."""
         return f"Settings(model_name='{self.model_name}')"
+
+    def set_send_message(self, send_message: Callable[[ExtBot[None], int, str], Awaitable[None]]) -> None:
+        """Set the send_message function."""
+        self._send_message = send_message
+
+    @property
+    def send_message(self) -> Callable[[ExtBot[None], int, str], Awaitable[None]]:
+        """Get the send_message function."""
+        if self._send_message is None:
+            raise RuntimeError("send_message has not been set. Call set_send_message() first.")
+        return self._send_message
 
     def __set_genconfig__(self, system_instructions: str) -> None:
         """

@@ -294,3 +294,62 @@ class TestSettings:
         # We can't directly check the system_instruction field since it's passed to the constructor,
         # but we can verify the genconfig is a valid GenerateContentConfig instance
         assert isinstance(settings.genconfig, genai.types.GenerateContentConfig)
+
+    def test_send_message_not_set_raises_error(self, basic_settings_params):
+        """Test that accessing send_message before setting it raises RuntimeError."""
+        settings = Settings(**basic_settings_params)
+
+        with pytest.raises(RuntimeError, match="send_message has not been set. Call set_send_message\\(\\) first."):
+            _ = settings.send_message
+
+    def test_send_message_set_and_get(self, basic_settings_params):
+        """Test setting and getting send_message function."""
+        from unittest.mock import AsyncMock
+
+        settings = Settings(**basic_settings_params)
+        mock_send_message = AsyncMock()
+
+        settings.set_send_message(mock_send_message)
+
+        assert settings.send_message is mock_send_message
+
+    def test_send_message_property_type_checking(self, basic_settings_params):
+        """Test that send_message property returns the correct type."""
+        from unittest.mock import AsyncMock
+
+        settings = Settings(**basic_settings_params)
+        mock_send_message = AsyncMock()
+
+        settings.set_send_message(mock_send_message)
+
+        # Verify the property returns a callable
+        result = settings.send_message
+        assert callable(result)
+        assert result is mock_send_message
+
+    def test_send_message_integration_with_schedule(self, basic_settings_params):
+        """Test that send_message integration works with schedule plugin."""
+        from unittest.mock import AsyncMock, Mock
+
+        from telegram.ext import ExtBot
+
+        settings = Settings(**basic_settings_params)
+        mock_send_message = AsyncMock()
+        settings.set_send_message(mock_send_message)
+
+        # Create mock objects similar to what schedule.py would use
+        mock_bot = Mock(spec=ExtBot)
+        chat_id = 123456789
+        text = "Test agenda message"
+
+        # This simulates what the schedule plugin does
+        async def simulate_schedule_usage():
+            await settings.send_message(mock_bot, chat_id, text)
+
+        # Run the simulation
+        import asyncio
+
+        asyncio.run(simulate_schedule_usage())
+
+        # Verify send_message was called correctly
+        mock_send_message.assert_called_once_with(mock_bot, chat_id, text)

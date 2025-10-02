@@ -75,6 +75,8 @@ class TestSendAgenda:
         settings.mcp_config_path = "/path/to/config.yaml"
         settings.model_name = "gemini-2.5-flash"
         settings.genconfig = Mock()
+        mock_send_message = AsyncMock()
+        settings.send_message = mock_send_message
         return settings
 
     @pytest.mark.asyncio
@@ -131,10 +133,8 @@ class TestSendAgenda:
         await send_agenda(mock_context)
 
         # Verify
-        mock_context.bot.send_message.assert_called_once_with(
-            chat_id=123456789,
-            text="Good morning! The weather is sunny at 25°C. You have a meeting at 10 AM.",
-            parse_mode="Markdown",
+        mock_schedule_data.settings.send_message.assert_called_once_with(
+            mock_context.bot, 123456789, "Good morning! The weather is sunny at 25°C. You have a meeting at 10 AM."
         )
 
         # Verify MCP clients were called with correct prompts
@@ -171,9 +171,9 @@ class TestSendAgenda:
         # Execute
         await send_agenda(mock_context)
 
-        # Verify bot was called with GenAI response and Markdown parse mode
-        mock_context.bot.send_message.assert_called_once_with(
-            chat_id=123456789, text=mock_response.text, parse_mode="Markdown"
+        # Verify bot was called with GenAI response
+        mock_schedule_data.settings.send_message.assert_called_once_with(
+            mock_context.bot, 123456789, mock_response.text
         )
 
         # Verify error was logged
@@ -231,8 +231,8 @@ class TestSendAgenda:
         await send_agenda(mock_context)
 
         # Verify message was sent with empty data acknowledgment
-        mock_context.bot.send_message.assert_called_once_with(
-            chat_id=123456789, text="Good morning! No events or weather data available.", parse_mode="Markdown"
+        mock_schedule_data.settings.send_message.assert_called_once_with(
+            mock_context.bot, 123456789, "Good morning! No events or weather data available."
         )
 
     @pytest.mark.asyncio
