@@ -51,7 +51,7 @@ acknowledge it cheerfully or omit it gracefully.
 """
 
 CALENDAR_MCP_PROMPT: Final[str] = (
-    "List upcoming calendar events today in my primary calendar in Europe/Prague timezone?"
+    "List upcoming calendar events today. Use 24h time and DD-MM-YYYY formats, remove any date and timezone markers from the output. Output a single list with events sorted by start time"
 )
 WEATHER_MCP_PROMPT: Final[str] = "What is the weather like in Brno today?"
 
