@@ -120,7 +120,7 @@ class Telega:
             self.settings.logger.error("Failed to send message", error=str(e))
             # Attempt to send a new reply with unicode characters stripped
             clean_text = converted_text.encode("ascii", "ignore").decode("ascii")
-            await bot.send_message(chat_id=chat_id, text=clean_text)
+            await bot.send_message(chat_id=chat_id, text=clean_text, parse_mode="HTML")
 
     async def reply_to_message(self, update: Update, text: str) -> None:
         """
@@ -136,16 +136,14 @@ class Telega:
         converted_text = await self._convert_markdown_to_telegram_html(text)
         try:
             await update.message.reply_text(
-                text=converted_text,
-                reply_to_message_id=update.message.message_id,
+                text=converted_text, reply_to_message_id=update.message.message_id, parse_mode="HTML"
             )
         except Exception as e:
             self.settings.logger.error("Failed to reply to message", update_id=update.update_id, error=str(e))
             # Attempt to send a new reply with unicode characters stripped
             clean_text = converted_text.encode("ascii", "ignore").decode("ascii")
             await update.message.reply_text(
-                text=clean_text,
-                reply_to_message_id=update.message.message_id,
+                text=clean_text, reply_to_message_id=update.message.message_id, parse_mode="HTML"
             )
 
     async def handle_photo_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
