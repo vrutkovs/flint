@@ -115,7 +115,7 @@ class Telega:
         """
         converted_text = await self._convert_markdown_to_telegram_html(text)
         try:
-            await bot.send_message(chat_id=chat_id, text=converted_text)
+            await bot.send_message(chat_id=chat_id, text=converted_text, parse_mode="HTML")
         except Exception as e:
             self.settings.logger.error("Failed to send message", error=str(e))
             # Attempt to send a new reply with unicode characters stripped
