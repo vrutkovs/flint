@@ -1,6 +1,7 @@
 """Diary plugin for generating daily diary entries in markdown format."""
 
 import datetime
+import re
 from pathlib import Path
 from typing import Final
 
@@ -35,9 +36,14 @@ DIARY_TEMPLATE: Final[str] = """## Diary
 ### Events
 {calendar_data}
 
-### Tasks
-{tasks_done}
+### Completed tasks
+{tasks_done}{in_progress_section}
 """
+
+DIARY_TEMPLATE_WITH_IN_PROGRESS: Final[str] = """
+
+### In progress
+{tasks_in_progress}"""
 
 DIARY_CALENDAR_PROMPT: Final[str] = """
 Summarize what happened today in my calendar - list completed events and meetings from today only.
@@ -56,6 +62,80 @@ Do not include any subtasks or subtasks of subtasks.
 
 IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES OTHER THAN THE LIST OF TASKS.
 """
+
+
+def scan_todoist_comments_for_today(todoist_folder: str, timezone: datetime.timezone) -> str:
+    """Scan Todoist folder for comments made today.
+
+    Args:
+        todoist_folder: Path to the Todoist folder
+        timezone: Timezone to use for date comparison
+
+    Returns:
+        Formatted string with today's comments
+    """
+    today = datetime.datetime.now(timezone).strftime("%d %b")
+    today_comments = []
+
+    todoist_path = Path(todoist_folder)
+    if not todoist_path.exists():
+        return "Todoist folder not found"
+
+    # Pattern to match comment lines: "* DD MMM HH:MM - comment text"
+    comment_pattern = re.compile(r"^\* (\d{1,2} \w{3}) \d{2}:\d{2} - (.+)$")
+
+    for md_file in todoist_path.glob("*.md"):
+        try:
+            with open(md_file, encoding="utf-8") as file:
+                content = file.read()
+
+            # Extract title and todoist_id from frontmatter
+            title_match = re.search(r'^title: "(.+)"$', content, re.MULTILINE)
+            todoist_id_match = re.search(r'^todoist_id: "(.+)"$', content, re.MULTILINE)
+
+            if not title_match or not todoist_id_match:
+                continue
+
+            title = title_match.group(1)
+            todoist_id = todoist_id_match.group(1)
+
+            # Find Comments section
+            comments_section = re.search(r"^## Comments\s*\n(.*?)(?=\n##|\Z)", content, re.MULTILINE | re.DOTALL)
+            if not comments_section:
+                continue
+
+            comments_text = comments_section.group(1).strip()
+
+            # Find today's comments
+            task_comments = []
+            for line in comments_text.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+
+                match = comment_pattern.match(line)
+                if match:
+                    comment_date = match.group(1)
+                    comment_text = match.group(2)
+
+                    if comment_date == today:
+                        task_comments.append(f"\t* {comment_text}")
+
+            if task_comments:
+                # Clean title for obsidian link format
+                clean_title = re.sub(r"[^\w\s-]", "", title).strip()
+                today_comments.append(f"* [/] [[Todoist/{todoist_id}|{clean_title}]")
+                today_comments.extend(task_comments)
+
+        except Exception as e:
+            # Log error but continue processing other files
+            structlog.get_logger().warning(f"Error processing {md_file}: {e}")
+            continue
+
+    if not today_comments:
+        return "No comments made today"
+
+    return "\n".join(today_comments)
 
 
 def replace_diary_section(existing_content: str, new_diary_section: str) -> str:
@@ -179,10 +259,28 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         settings.logger.info("Todoist MCP not configured, skipping tasks data")
 
+    # Fetch tasks in progress data by scanning Todoist folder for today's comments
+    tasks_in_progress: str | None = None
+    in_progress_section: str = ""
+    todoist_folder = settings.todoist_notes_folder
+
+    if todoist_folder:
+        try:
+            tasks_in_progress = scan_todoist_comments_for_today(todoist_folder, settings.timezone)
+            settings.logger.info(f"Todoist in-progress data scanned from folder: {tasks_in_progress}")
+            in_progress_section = DIARY_TEMPLATE_WITH_IN_PROGRESS.format(
+                tasks_in_progress=tasks_in_progress or "No tasks in progress today"
+            )
+        except Exception as e:
+            settings.logger.error(f"Failed to scan Todoist folder for in-progress data: {e}")
+    else:
+        settings.logger.info("todoist_notes_folder not configured, skipping in-progress tasks data")
+
     # Create the diary entry
     diary_entry: str = DIARY_TEMPLATE.format(
         calendar_data=calendar_data or "No calendar events recorded for today",
         tasks_done=tasks_done or "No tasks completed today",
+        in_progress_section=in_progress_section,
     )
 
     settings.logger.info("Diary entry created")

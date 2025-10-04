@@ -69,6 +69,7 @@ MCP_TODOIST_NAME: str | None = os.environ.get("MCP_TODOIST_NAME")
 MCP_WEATHER_NAME: str | None = os.environ.get("MCP_WEATHER_NAME")
 
 DAILY_NOTE_FOLDER: str | None = os.environ.get("DAILY_NOTE_FOLDER")
+TODOIST_NOTES_FOLDER: str | None = os.environ.get("TODOIST_NOTES_FOLDER")
 
 SYSTEM_INSTRUCTIONS: str = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
@@ -108,6 +109,7 @@ settings: Settings = Settings(
     user_filter=USER_FILTER,
     system_instructions=SYSTEM_INSTRUCTIONS,
     daily_note_folder=DAILY_NOTE_FOLDER,
+    todoist_notes_folder=TODOIST_NOTES_FOLDER,
     rag_embedding_model=RAG_EMBEDDING_MODEL,
     rag_location=RAG_LOCATION,
     rag_vector_storage=RAG_VECTOR_STORAGE,

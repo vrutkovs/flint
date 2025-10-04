@@ -28,6 +28,7 @@ class Settings:
         mcp_todoist_name: str,
         system_instructions: str,
         daily_note_folder: str | None = None,
+        todoist_notes_folder: str | None = None,
         rag_embedding_model: str | None = None,
         rag_location: str | None = None,
         rag_vector_storage: str | None = None,
@@ -49,6 +50,7 @@ class Settings:
             mcp_todoist_name: Name of Todoist MCP for summaries
             system_instructions: System instructions for AI model
             daily_note_folder: Optional directory path for daily diary entries
+            todoist_notes_folder: Optional directory path for Todoist notes
             rag_embedding_model: Optional RAG embedding model name
             rag_location: Optional RAG data location
             rag_vector_storage: Optional RAG vector storage location
@@ -66,6 +68,7 @@ class Settings:
         self.agenda_mcp_weather_name: str = mcp_weather_name
         self.agenda_mcp_todoist_name: str = mcp_todoist_name
         self.daily_note_folder: str | None = daily_note_folder
+        self.todoist_notes_folder: str | None = todoist_notes_folder
         self.user_filter: list[str] = user_filter or []
         self.genconfig: genai.types.GenerateContentConfig
         self.qa_chain: Any | None = None
