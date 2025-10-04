@@ -52,7 +52,9 @@ DIARY_TODOIST_PROMPT: Final[str] = """
 What tasks did I complete today? List the tasks I finished today with a brief summary. Format:
 * [x] [[Todoist/<task id>|<task title without special characters>] ✅ <date in YYYY-MM-DD format>
 
-IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF COMPLETED TASKS.
+Do not include any subtasks or subtasks of subtasks.
+
+IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES OTHER THAN THE LIST OF TASKS.
 """
 
 
