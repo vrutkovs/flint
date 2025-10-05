@@ -54,14 +54,61 @@ Use only 24 hours format for time. Convert all times to Europe/Prague timezone, 
 IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF EVENTS AND MEETINGS.
 """
 
-DIARY_TODOIST_PROMPT: Final[str] = """
-What tasks did I complete today? List the tasks I finished today with a brief summary. Format:
-* [x] [[Todoist/<task id>|<task title without special characters>]] ✅ <date in YYYY-MM-DD format>
 
-Do not include any subtasks or subtasks of subtasks.
+def scan_todoist_completed_tasks_today(todoist_folder: str, timezone: datetime.timezone) -> str:
+    """Scan Todoist folder for tasks completed today.
 
-IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES OTHER THAN THE LIST OF TASKS.
-"""
+    Args:
+        todoist_folder: Path to the Todoist folder
+        timezone: Timezone to use for date comparison
+
+    Returns:
+        Formatted string with today's completed tasks
+    """
+    today = datetime.datetime.now(timezone).date()
+    completed_today = []
+
+    todoist_path = Path(todoist_folder)
+    if not todoist_path.exists():
+        return "Todoist folder not found"
+
+    for md_file in todoist_path.glob("*.md"):
+        try:
+            with open(md_file, encoding="utf-8") as file:
+                content = file.read()
+
+            # Check if task is completed
+            if "completed: true" not in content:
+                continue
+
+            # Extract title and todoist_id from frontmatter
+            title_match = re.search(r'^title: "(.+)"$', content, re.MULTILINE)
+            todoist_id_match = re.search(r'^todoist_id: "(.+)"$', content, re.MULTILINE)
+
+            if not title_match or not todoist_id_match:
+                continue
+
+            title = title_match.group(1)
+            todoist_id = todoist_id_match.group(1)
+
+            # Check file modification time to see if completed today
+            file_stat = md_file.stat()
+            file_modified_date = datetime.datetime.fromtimestamp(file_stat.st_mtime, tz=timezone).date()
+
+            if file_modified_date == today:
+                # Clean title for obsidian link format
+                clean_title = re.sub(r"[^\w\s-]", "", title).strip()
+                completed_today.append(f"* [x] [[Todoist/{todoist_id}|{clean_title}]] ✅ {today}")
+
+        except Exception as e:
+            # Log error but continue processing other files
+            structlog.get_logger().warning(f"Error processing {md_file}: {e}")
+            continue
+
+    if not completed_today:
+        return "No tasks completed today"
+
+    return "\n".join(completed_today)
 
 
 def scan_todoist_comments_for_today(todoist_folder: str, timezone: datetime.timezone) -> str:
@@ -237,27 +284,17 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         settings.logger.info("Calendar MCP not configured, skipping calendar data")
 
-    # Fetch tasks done data for context
+    # Fetch tasks done data by scanning Todoist folder for tasks completed today
     tasks_done: str | None = None
-    if hasattr(settings, "agenda_mcp_todoist_name") and settings.agenda_mcp_todoist_name:
-        todoist_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_todoist_name)
-        if todoist_mcp_config:
-            try:
-                server_params = await todoist_mcp_config.get_server_params()
-                todoist_mcp: MCPClient = MCPClient(
-                    name=todoist_mcp_config.name,
-                    server_params=server_params,
-                    logger=settings.logger,
-                )
-                tasks_done = await todoist_mcp.get_response(settings=settings, prompt=DIARY_TODOIST_PROMPT)
-                settings.logger.info(f"Todoist data fetched for diary: {tasks_done}")
-            except Exception as e:
-                settings.logger.error(f"Failed to fetch Todoist data: {e}")
-                tasks_done = None
-        else:
-            settings.logger.warning("Todoist MCP configuration not found for diary")
+    if settings.todoist_notes_folder:
+        try:
+            tasks_done = scan_todoist_completed_tasks_today(settings.todoist_notes_folder, settings.timezone)
+            settings.logger.info(f"Todoist completed tasks scanned from folder: {tasks_done}")
+        except Exception as e:
+            settings.logger.error(f"Failed to scan Todoist folder for completed tasks: {e}")
+            tasks_done = None
     else:
-        settings.logger.info("Todoist MCP not configured, skipping tasks data")
+        settings.logger.info("todoist_notes_folder not configured, skipping completed tasks data")
 
     # Fetch tasks in progress data by scanning Todoist folder for today's comments
     tasks_in_progress: str | None = None

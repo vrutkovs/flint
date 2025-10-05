@@ -174,7 +174,7 @@ elif SCHEDULED_AGENDA_TIME:
     )
 
 # Create scheduler for diary entries
-if SCHEDULED_DIARY_TIME and MCP_CALENDAR_NAME and MCP_TODOIST_NAME and settings.daily_note_folder:
+if SCHEDULED_DIARY_TIME and settings.daily_note_folder:
     if GOOGLE_OAUTH_CREDENTIALS and not os.path.exists(GOOGLE_OAUTH_CREDENTIALS):
         log.warning(f"Google OAuth credentials file not found: {GOOGLE_OAUTH_CREDENTIALS}")
         log.warning("Diary feature will work with limited functionality (no calendar data)")
@@ -198,21 +198,26 @@ if SCHEDULED_DIARY_TIME and MCP_CALENDAR_NAME and MCP_TODOIST_NAME and settings.
     )
     log.info(f"Scheduled diary entry generation at {diary_schedule_time}")
 
-    if GOOGLE_OAUTH_CREDENTIALS:
-        log.info(f"Google Calendar integration enabled using: {GOOGLE_OAUTH_CREDENTIALS}")
+    # Log diary feature components
+
+    if MCP_CALENDAR_NAME:
+        if GOOGLE_OAUTH_CREDENTIALS:
+            log.info(
+                f"Calendar integration enabled using MCP '{MCP_CALENDAR_NAME}' with OAuth: {GOOGLE_OAUTH_CREDENTIALS}"
+            )
+        else:
+            log.info(
+                f"Calendar integration enabled using MCP '{MCP_CALENDAR_NAME}' (limited functionality without OAuth)"
+            )
     else:
-        log.info("GOOGLE_OAUTH_CREDENTIALS not set - diary will work without calendar data")
+        log.info("Calendar MCP not configured - diary will work without calendar data")
+
+    if TODOIST_NOTES_FOLDER:
+        log.info(f"Todoist tasks integration enabled using folder: {TODOIST_NOTES_FOLDER}")
+    else:
+        log.info("TODOIST_NOTES_FOLDER not set - diary will work without task data")
 elif SCHEDULED_DIARY_TIME:
-    missing_vars = []
-    if not MCP_CALENDAR_NAME:
-        missing_vars.append("MCP_CALENDAR_NAME")
-    if not MCP_TODOIST_NAME:
-        missing_vars.append("MCP_TODOIST_NAME")
-    if not settings.daily_note_folder:
-        missing_vars.append("DAILY_NOTE_FOLDER")
-    log.warning(
-        f"SCHEDULED_DIARY_TIME is set but the following required variables are missing: {', '.join(missing_vars)}. Diary scheduling will not be enabled."
-    )
+    log.warning("SCHEDULED_DIARY_TIME is set but DAILY_NOTE_FOLDER is missing. Diary scheduling will not be enabled.")
 
 # Start the bot
 try:
