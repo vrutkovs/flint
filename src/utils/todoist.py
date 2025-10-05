@@ -18,22 +18,29 @@ class TodoistTask(NamedTuple):
     file_path: Path
 
 
-def parse_todoist_frontmatter(content: str) -> tuple[str | None, str | None]:
-    """Parse title and todoist_id from frontmatter.
+def parse_todoist_frontmatter(content: str) -> tuple[str | None, str | None, str | None, str | None]:
+    """Parse title, todoist_id, project, and section from frontmatter.
 
     Args:
         content: File content with YAML frontmatter
 
     Returns:
-        Tuple of (title, todoist_id) or (None, None) if parsing fails
+        Tuple of (title, todoist_id, project, section) or (None, None, None, None) if parsing fails
     """
     title_match = re.search(r'^title: "(.+)"$', content, re.MULTILINE)
     todoist_id_match = re.search(r'^todoist_id: "(.+)"$', content, re.MULTILINE)
+    project_match = re.search(r'^project: "(.+)"$', content, re.MULTILINE)
+    section_match = re.search(r'^section: "(.+)"$', content, re.MULTILINE)
 
     if not title_match or not todoist_id_match:
-        return None, None
+        return None, None, None, None
 
-    return title_match.group(1), todoist_id_match.group(1)
+    title = title_match.group(1)
+    todoist_id = todoist_id_match.group(1)
+    project = project_match.group(1) if project_match else "Other"
+    section = section_match.group(1) if section_match else None
+
+    return title, todoist_id, project, section
 
 
 def read_todoist_file(file_path: Path) -> str | None:
@@ -116,10 +123,10 @@ def scan_todoist_completed_tasks_today(todoist_folder: str, timezone: pytz.tzinf
         timezone: Timezone to use for date comparison
 
     Returns:
-        Formatted string with today's completed tasks
+        Formatted string with today's completed tasks grouped by project
     """
     today = datetime.datetime.now(timezone).date()
-    completed_today = []
+    completed_by_project = {}
 
     todoist_files = get_todoist_files(todoist_folder)
     if not todoist_files:
@@ -134,20 +141,38 @@ def scan_todoist_completed_tasks_today(todoist_folder: str, timezone: pytz.tzinf
         if not is_task_completed(content):
             continue
 
-        # Extract title and todoist_id from frontmatter
-        title, todoist_id = parse_todoist_frontmatter(content)
+        # Extract title, todoist_id, project, and section from frontmatter
+        title, todoist_id, project, section = parse_todoist_frontmatter(content)
         if not title or not todoist_id:
             continue
 
         # Check file modification time to see if completed today
         if is_file_modified_today(md_file, timezone):
             clean_title = clean_title_for_obsidian_link(title)
-            completed_today.append(f"* [x] [[Todoist/{todoist_id}|{clean_title}]] ✅ {today}")
+            task_entry = f"* [x] [[Todoist/{todoist_id}|{clean_title}]] ✅ {today}"
 
-    if not completed_today:
+            # Create project key with section if available
+            project_key = f"{project} - {section}" if section else project
+
+            if project_key not in completed_by_project:
+                completed_by_project[project_key] = []
+            completed_by_project[project_key].append(task_entry)
+
+    if not completed_by_project:
         return "No tasks completed today"
 
-    return "\n".join(completed_today)
+    # Format output by project and section
+    result = []
+    for project_key, tasks in sorted(completed_by_project.items()):
+        result.append(f"**{project_key}:**")
+        result.extend(tasks)
+        result.append("")  # Empty line between sections
+
+    # Remove trailing empty line
+    if result and result[-1] == "":
+        result.pop()
+
+    return "\n".join(result)
 
 
 def extract_comments_section(content: str) -> str | None:
@@ -189,10 +214,10 @@ def scan_todoist_comments_for_today(todoist_folder: str, timezone: pytz.tzinfo.B
         timezone: Timezone to use for date comparison
 
     Returns:
-        Formatted string with today's comments
+        Formatted string with today's comments grouped by project
     """
     today = datetime.datetime.now(timezone).strftime("%d %b")
-    today_comments = []
+    comments_by_project = {}
 
     todoist_files = get_todoist_files(todoist_folder)
     if not todoist_files:
@@ -203,8 +228,8 @@ def scan_todoist_comments_for_today(todoist_folder: str, timezone: pytz.tzinfo.B
         if not content:
             continue
 
-        # Extract title and todoist_id from frontmatter
-        title, todoist_id = parse_todoist_frontmatter(content)
+        # Extract title, todoist_id, project, and section from frontmatter
+        title, todoist_id, project, section = parse_todoist_frontmatter(content)
         if not title or not todoist_id:
             continue
 
@@ -225,10 +250,28 @@ def scan_todoist_comments_for_today(todoist_folder: str, timezone: pytz.tzinfo.B
 
         if task_comments:
             clean_title = clean_title_for_obsidian_link(title)
-            today_comments.append(f"* [/] [[Todoist/{todoist_id}|{clean_title}]]")
-            today_comments.extend(task_comments)
+            task_entry = [f"* [/] [[Todoist/{todoist_id}|{clean_title}]]"]
+            task_entry.extend(task_comments)
 
-    if not today_comments:
+            # Create project key with section if available
+            project_key = f"{project} - {section}" if section else project
+
+            if project_key not in comments_by_project:
+                comments_by_project[project_key] = []
+            comments_by_project[project_key].extend(task_entry)
+
+    if not comments_by_project:
         return "No comments made today"
 
-    return "\n".join(today_comments)
+    # Format output by project and section
+    result = []
+    for project_key, comments in sorted(comments_by_project.items()):
+        result.append(f"**{project_key}:**")
+        result.extend(comments)
+        result.append("")  # Empty line between sections
+
+    # Remove trailing empty line
+    if result and result[-1] == "":
+        result.pop()
+
+    return "\n".join(result)
