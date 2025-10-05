@@ -140,7 +140,7 @@ class MCPClient:
                     self.logger.error(f"MCP {self.name}: part.text is missing or not a string")
                     return None
 
-                return cast(str, text.strip())
+                return text.strip()
             except Exception as e:
                 self.logger.error(f"MCP {self.name} failed to generate a response: {e}")
                 return None
@@ -203,9 +203,6 @@ class MCPConfigReader:
 
         mcp_configs: dict[str, Any] = self._raw_config["extensions"]  # Extensions format
 
-        if not isinstance(mcp_configs, dict):
-            raise ValueError("MCP configuration must be a dictionary")
-
         for name, config in mcp_configs.items():
             try:
                 mcp: MCPConfiguration = self._create_mcp_configuration(name, config)
@@ -232,9 +229,6 @@ class MCPConfigReader:
         if isinstance(config, str):
             # Simple string configuration (just type)
             return MCPConfiguration(name=name, type=config)
-
-        if not isinstance(config, dict):
-            raise ValueError(f"MCP configuration for '{name}' must be a dictionary or string")
 
         # Extract configuration fields
         mcp_type: str = str(config.get("type", config.get("command", "")))

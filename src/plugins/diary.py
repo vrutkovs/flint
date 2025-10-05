@@ -1,7 +1,6 @@
 """Diary plugin for generating daily diary entries in markdown format."""
 
 import datetime
-import re
 from pathlib import Path
 from typing import Final
 
@@ -9,12 +8,11 @@ import structlog
 from google import genai
 from telegram.ext import ContextTypes
 
-from plugins.mcp import (
-    MCPClient,
-    MCPConfigReader,
-    MCPConfiguration,
-)
+from plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration
 from telega.settings import Settings
+from utils.file_operations import ensure_directory_exists, read_file_safely, write_file_safely
+from utils.obsidian import replace_diary_section
+from utils.todoist import scan_todoist_comments_for_today, scan_todoist_completed_tasks_today
 
 
 class DiaryData:
@@ -55,176 +53,157 @@ IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF EVE
 """
 
 
-def scan_todoist_completed_tasks_today(todoist_folder: str, timezone: datetime.timezone) -> str:
-    """Scan Todoist folder for tasks completed today.
+async def fetch_calendar_data(settings: Settings, mcps: MCPConfigReader) -> str | None:
+    """Fetch calendar data using MCP client.
 
     Args:
-        todoist_folder: Path to the Todoist folder
-        timezone: Timezone to use for date comparison
+        settings: Settings object containing configuration
+        mcps: MCP configuration reader
 
     Returns:
-        Formatted string with today's completed tasks
+        Calendar data string or None if not available
     """
-    today = datetime.datetime.now(timezone).date()
-    completed_today = []
+    if not (hasattr(settings, "agenda_mcp_calendar_name") and settings.agenda_mcp_calendar_name):
+        settings.logger.info("Calendar MCP not configured, skipping calendar data")
+        return None
 
-    todoist_path = Path(todoist_folder)
-    if not todoist_path.exists():
-        return "Todoist folder not found"
+    calendar_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
+    if not calendar_mcp_config:
+        settings.logger.warning("Calendar MCP configuration not found for diary")
+        return None
 
-    for md_file in todoist_path.glob("*.md"):
-        try:
-            with open(md_file, encoding="utf-8") as file:
-                content = file.read()
-
-            # Check if task is completed
-            if "completed: true" not in content:
-                continue
-
-            # Extract title and todoist_id from frontmatter
-            title_match = re.search(r'^title: "(.+)"$', content, re.MULTILINE)
-            todoist_id_match = re.search(r'^todoist_id: "(.+)"$', content, re.MULTILINE)
-
-            if not title_match or not todoist_id_match:
-                continue
-
-            title = title_match.group(1)
-            todoist_id = todoist_id_match.group(1)
-
-            # Check file modification time to see if completed today
-            file_stat = md_file.stat()
-            file_modified_date = datetime.datetime.fromtimestamp(file_stat.st_mtime, tz=timezone).date()
-
-            if file_modified_date == today:
-                # Clean title for obsidian link format
-                clean_title = re.sub(r"[^\w\s-]", "", title).strip()
-                completed_today.append(f"* [x] [[Todoist/{todoist_id}|{clean_title}]] ✅ {today}")
-
-        except Exception as e:
-            # Log error but continue processing other files
-            structlog.get_logger().warning(f"Error processing {md_file}: {e}")
-            continue
-
-    if not completed_today:
-        return "No tasks completed today"
-
-    return "\n".join(completed_today)
+    try:
+        server_params = await calendar_mcp_config.get_server_params()
+        calendar_mcp: MCPClient = MCPClient(
+            name=calendar_mcp_config.name,
+            server_params=server_params,
+            logger=settings.logger,
+        )
+        calendar_data = await calendar_mcp.get_response(settings=settings, prompt=DIARY_CALENDAR_PROMPT)
+        settings.logger.info("Calendar data fetched for diary")
+        return calendar_data
+    except Exception as e:
+        settings.logger.error(f"Failed to fetch calendar data: {e}")
+        return None
 
 
-def scan_todoist_comments_for_today(todoist_folder: str, timezone: datetime.timezone) -> str:
-    """Scan Todoist folder for comments made today.
+def fetch_completed_tasks_data(settings: Settings) -> str | None:
+    """Fetch completed tasks data from Todoist folder.
 
     Args:
-        todoist_folder: Path to the Todoist folder
-        timezone: Timezone to use for date comparison
+        settings: Settings object containing configuration
 
     Returns:
-        Formatted string with today's comments
+        Completed tasks data string or None if not available
     """
-    today = datetime.datetime.now(timezone).strftime("%d %b")
-    today_comments = []
+    if not settings.todoist_notes_folder:
+        settings.logger.info("todoist_notes_folder not configured, skipping completed tasks data")
+        return None
 
-    todoist_path = Path(todoist_folder)
-    if not todoist_path.exists():
-        return "Todoist folder not found"
-
-    # Pattern to match comment lines: "* DD MMM HH:MM - comment text"
-    comment_pattern = re.compile(r"^\* (\d{1,2} \w{3}) \d{2}:\d{2} - (.+)$")
-
-    for md_file in todoist_path.glob("*.md"):
-        try:
-            with open(md_file, encoding="utf-8") as file:
-                content = file.read()
-
-            # Extract title and todoist_id from frontmatter
-            title_match = re.search(r'^title: "(.+)"$', content, re.MULTILINE)
-            todoist_id_match = re.search(r'^todoist_id: "(.+)"$', content, re.MULTILINE)
-
-            if not title_match or not todoist_id_match:
-                continue
-
-            title = title_match.group(1)
-            todoist_id = todoist_id_match.group(1)
-
-            # Find Comments section
-            comments_section = re.search(r"^## Comments\s*\n(.*?)(?=\n##|\Z)", content, re.MULTILINE | re.DOTALL)
-            if not comments_section:
-                continue
-
-            comments_text = comments_section.group(1).strip()
-
-            # Find today's comments
-            task_comments = []
-            for line in comments_text.split("\n"):
-                line = line.strip()
-                if not line:
-                    continue
-
-                match = comment_pattern.match(line)
-                if match:
-                    comment_date = match.group(1)
-                    comment_text = match.group(2)
-
-                    if comment_date == today:
-                        task_comments.append(f"\t* {comment_text}")
-
-            if task_comments:
-                # Clean title for obsidian link format
-                clean_title = re.sub(r"[^\w\s-]", "", title).strip()
-                today_comments.append(f"* [/] [[Todoist/{todoist_id}|{clean_title}]]")
-                today_comments.extend(task_comments)
-
-        except Exception as e:
-            # Log error but continue processing other files
-            structlog.get_logger().warning(f"Error processing {md_file}: {e}")
-            continue
-
-    if not today_comments:
-        return "No comments made today"
-
-    return "\n".join(today_comments)
+    try:
+        tasks_done = scan_todoist_completed_tasks_today(settings.todoist_notes_folder, settings.timezone)
+        settings.logger.info("Todoist completed tasks scanned from folder")
+        return tasks_done
+    except Exception as e:
+        settings.logger.error(f"Failed to scan Todoist folder for completed tasks: {e}")
+        return None
 
 
-def replace_diary_section(existing_content: str, new_diary_section: str) -> str:
-    """Replace existing diary section with new content.
+def fetch_in_progress_tasks_data(settings: Settings) -> str:
+    """Fetch in-progress tasks data from Todoist folder.
 
     Args:
-        existing_content: Current file content
-        new_diary_section: New diary section to insert
+        settings: Settings object containing configuration
 
     Returns:
-        Updated file content with diary section replaced
+        Formatted in-progress section string (empty if not available)
     """
-    if not existing_content.strip():
-        return new_diary_section.strip()
+    if not settings.todoist_notes_folder:
+        settings.logger.info("todoist_notes_folder not configured, skipping in-progress tasks data")
+        return ""
 
-    # Split content by lines to work with sections
-    lines = existing_content.split("\n")
-    result_lines = []
-    in_diary_section = False
-    diary_section_found = False
+    try:
+        tasks_in_progress = scan_todoist_comments_for_today(settings.todoist_notes_folder, settings.timezone)
+        settings.logger.info("Todoist in-progress data scanned from folder")
+        return DIARY_TEMPLATE_WITH_IN_PROGRESS.format(
+            tasks_in_progress=tasks_in_progress or "No tasks in progress today"
+        )
+    except Exception as e:
+        settings.logger.error(f"Failed to scan Todoist folder for in-progress data: {e}")
+        return ""
 
-    for line in lines:
-        if line.strip() == "## Diary":
-            # Start of diary section - replace with new content
-            diary_section_found = True
-            in_diary_section = True
-            result_lines.extend(new_diary_section.strip().split("\n"))
-        elif in_diary_section and line.startswith("## "):
-            # End of diary section, start of new section
-            in_diary_section = False
-            result_lines.append("")  # Add blank line before next section
-            result_lines.append(line)
-        elif not in_diary_section:
-            # Not in diary section, keep the line
-            result_lines.append(line)
-        # Skip lines that are in diary section (they get replaced)
 
-    if not diary_section_found:
-        # No diary section found, append to end
-        result_lines.extend(["", new_diary_section.strip()])
+def create_diary_content(calendar_data: str | None, tasks_done: str | None, in_progress_section: str) -> str:
+    """Create diary entry content from components.
 
-    return "\n".join(result_lines)
+    Args:
+        calendar_data: Calendar events data
+        tasks_done: Completed tasks data
+        in_progress_section: In-progress tasks section
+
+    Returns:
+        Formatted diary entry content
+    """
+    return DIARY_TEMPLATE.format(
+        calendar_data=calendar_data or "No calendar events recorded for today",
+        tasks_done=tasks_done or "No tasks completed today",
+        in_progress_section=in_progress_section,
+    )
+
+
+def get_daily_note_file_path(settings: Settings, date_str: str) -> Path | None:
+    """Get the file path for the daily note.
+
+    Args:
+        settings: Settings object containing configuration
+        date_str: Date string in YYYY-MM-DD format
+
+    Returns:
+        Path to daily note file or None if configuration is missing
+    """
+    if not settings.daily_note_folder:
+        settings.logger.error("DAILY_NOTE_FOLDER is not configured in settings")
+        return None
+
+    notes_path = Path(settings.daily_note_folder)
+    if not ensure_directory_exists(notes_path):
+        settings.logger.error(f"Failed to create daily notes directory: {notes_path}")
+        return None
+
+    filename = f"{date_str}.md"
+    return notes_path / filename
+
+
+def update_daily_note_file(file_path: Path, diary_entry: str, logger: structlog.BoundLogger) -> bool:
+    """Update daily note file with diary entry.
+
+    Args:
+        file_path: Path to the daily note file
+        diary_entry: Diary entry content
+        logger: Logger instance
+
+    Returns:
+        True if update was successful, False otherwise
+    """
+    # Read existing file content if it exists
+    existing_content = ""
+    if file_path.exists():
+        content = read_file_safely(file_path)
+        if content is None:
+            logger.error(f"Failed to read existing file {file_path}")
+            return False
+        existing_content = content
+
+    # Replace or add diary section
+    updated_content = replace_diary_section(existing_content, diary_entry)
+
+    # Write the updated content to the file
+    if write_file_safely(file_path, updated_content):
+        logger.info(f"Daily diary entry written to {file_path}")
+        return True
+    else:
+        logger.error(f"Failed to write diary entry to file: {file_path}")
+        return False
 
 
 async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -236,6 +215,7 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     log: structlog.BoundLogger = structlog.get_logger()
     log.info("Generating daily diary entry")
 
+    # Validate job context
     job = context.job
     if not job:
         log.error("Job is missing")
@@ -252,113 +232,29 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     settings: Settings = job_data.__getattribute__("settings")
-
     settings.logger.info("Starting diary entry generation")
 
     # Get current date and time
     now = datetime.datetime.now(settings.timezone)
     date_str = now.strftime("%Y-%m-%d")
 
+    # Initialize MCP configuration
     mcps: MCPConfigReader = MCPConfigReader(settings)
     mcps.reload_config()
 
-    # Fetch calendar data for context
-    calendar_data: str | None = None
-    if hasattr(settings, "agenda_mcp_calendar_name") and settings.agenda_mcp_calendar_name:
-        calendar_mcp_config: MCPConfiguration | None = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
-        if calendar_mcp_config:
-            try:
-                server_params = await calendar_mcp_config.get_server_params()
-                calendar_mcp: MCPClient = MCPClient(
-                    name=calendar_mcp_config.name,
-                    server_params=server_params,
-                    logger=settings.logger,
-                )
-                calendar_data = await calendar_mcp.get_response(settings=settings, prompt=DIARY_CALENDAR_PROMPT)
-                settings.logger.info(f"Calendar data fetched for diary: {calendar_data}")
-            except Exception as e:
-                settings.logger.error(f"Failed to fetch calendar data: {e}")
-                calendar_data = None
-        else:
-            settings.logger.warning("Calendar MCP configuration not found for diary")
-    else:
-        settings.logger.info("Calendar MCP not configured, skipping calendar data")
+    # Fetch all diary components
+    calendar_data = await fetch_calendar_data(settings, mcps)
+    tasks_done = fetch_completed_tasks_data(settings)
+    in_progress_section = fetch_in_progress_tasks_data(settings)
 
-    # Fetch tasks done data by scanning Todoist folder for tasks completed today
-    tasks_done: str | None = None
-    if settings.todoist_notes_folder:
-        try:
-            tasks_done = scan_todoist_completed_tasks_today(settings.todoist_notes_folder, settings.timezone)
-            settings.logger.info(f"Todoist completed tasks scanned from folder: {tasks_done}")
-        except Exception as e:
-            settings.logger.error(f"Failed to scan Todoist folder for completed tasks: {e}")
-            tasks_done = None
-    else:
-        settings.logger.info("todoist_notes_folder not configured, skipping completed tasks data")
-
-    # Fetch tasks in progress data by scanning Todoist folder for today's comments
-    tasks_in_progress: str | None = None
-    in_progress_section: str = ""
-    todoist_folder = settings.todoist_notes_folder
-
-    if todoist_folder:
-        try:
-            tasks_in_progress = scan_todoist_comments_for_today(todoist_folder, settings.timezone)
-            settings.logger.info(f"Todoist in-progress data scanned from folder: {tasks_in_progress}")
-            in_progress_section = DIARY_TEMPLATE_WITH_IN_PROGRESS.format(
-                tasks_in_progress=tasks_in_progress or "No tasks in progress today"
-            )
-        except Exception as e:
-            settings.logger.error(f"Failed to scan Todoist folder for in-progress data: {e}")
-    else:
-        settings.logger.info("todoist_notes_folder not configured, skipping in-progress tasks data")
-
-    # Create the diary entry
-    diary_entry: str = DIARY_TEMPLATE.format(
-        calendar_data=calendar_data or "No calendar events recorded for today",
-        tasks_done=tasks_done or "No tasks completed today",
-        in_progress_section=in_progress_section,
-    )
-
+    # Create diary entry content
+    diary_entry = create_diary_content(calendar_data, tasks_done, in_progress_section)
     settings.logger.info("Diary entry created")
 
-    # Get the daily notes folder from settings
-    daily_note_folder: str | None = settings.daily_note_folder
-    if not daily_note_folder:
-        settings.logger.error("DAILY_NOTE_FOLDER is not configured in settings")
+    # Get file path for daily note
+    file_path = get_daily_note_file_path(settings, date_str)
+    if not file_path:
         return
 
-    # Create the daily notes directory if it doesn't exist
-    notes_path: Path = Path(daily_note_folder)
-    try:
-        notes_path.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        settings.logger.error(f"Failed to create daily notes directory: {e}")
-        return
-
-    # Create the filename using current date
-    filename: str = f"{date_str}.md"
-    file_path: Path = notes_path / filename
-
-    # Read existing file content if it exists
-    existing_content: str = ""
-    if file_path.exists():
-        try:
-            with open(file_path, encoding="utf-8") as file:
-                existing_content = file.read()
-        except Exception as e:
-            settings.logger.error(f"Failed to read existing file {file_path}: {e}")
-            return
-
-    # Replace or add diary section
-    updated_content = replace_diary_section(existing_content, diary_entry)
-
-    # Write the updated content to the file
-    try:
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(updated_content)
-
-        settings.logger.info(f"Daily diary entry written to {file_path}")
-    except Exception as e:
-        settings.logger.error(f"Failed to write diary entry to file: {e}")
-    return
+    # Update the daily note file
+    update_daily_note_file(file_path, diary_entry, settings.logger)
