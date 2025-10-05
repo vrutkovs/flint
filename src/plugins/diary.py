@@ -56,7 +56,7 @@ IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF EVE
 
 DIARY_TODOIST_PROMPT: Final[str] = """
 What tasks did I complete today? List the tasks I finished today with a brief summary. Format:
-* [x] [[Todoist/<task id>|<task title without special characters>] ✅ <date in YYYY-MM-DD format>
+* [x] [[Todoist/<task id>|<task title without special characters>]] ✅ <date in YYYY-MM-DD format>
 
 Do not include any subtasks or subtasks of subtasks.
 
@@ -124,7 +124,7 @@ def scan_todoist_comments_for_today(todoist_folder: str, timezone: datetime.time
             if task_comments:
                 # Clean title for obsidian link format
                 clean_title = re.sub(r"[^\w\s-]", "", title).strip()
-                today_comments.append(f"* [/] [[Todoist/{todoist_id}|{clean_title}]")
+                today_comments.append(f"* [/] [[Todoist/{todoist_id}|{clean_title}]]")
                 today_comments.extend(task_comments)
 
         except Exception as e:
