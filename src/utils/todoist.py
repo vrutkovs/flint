@@ -1,21 +1,537 @@
-"""Todoist plugin for processing Todoist markdown files."""
+"""Todoist utilities for processing Todoist markdown files and API interactions."""
 
 import datetime
 import re
+import unicodedata
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import pytz
 import structlog
+from pydantic import BaseModel, Field
+
+try:
+    from todoist_api_python.api import TodoistAPI
+
+    todoist_available = True
+except ImportError:
+    TodoistAPI = None
+    todoist_available = False
 
 
-class TodoistTask(NamedTuple):
-    """Todoist task data."""
+class TodoistTaskFile(NamedTuple):
+    """Todoist task file data."""
 
     title: str
     todoist_id: str
     completed: bool
     file_path: Path
+
+
+class TodoistProject(BaseModel):
+    """Represents a Todoist project."""
+
+    id: str
+    name: str
+    color: str
+    is_shared: bool = False
+    url: str = ""
+
+    @classmethod
+    def from_api_project(cls, api_project: Any) -> "TodoistProject":
+        """Create TodoistProject from the API project object."""
+        return cls(
+            id=api_project.id,
+            name=api_project.name,
+            color=api_project.color,
+            is_shared=api_project.is_shared,
+            url=api_project.url,
+        )
+
+
+class TodoistSection(BaseModel):
+    """Represents a Todoist section."""
+
+    id: str
+    project_id: str
+    name: str
+    order: int
+
+    @classmethod
+    def from_api_section(cls, api_section: Any) -> "TodoistSection":
+        """Create TodoistSection from the API section object."""
+        return cls(
+            id=api_section.id,
+            project_id=api_section.project_id,
+            name=api_section.name,
+            order=api_section.order,
+        )
+
+
+class TodoistTask(BaseModel):
+    """Represents a Todoist task."""
+
+    id: str
+    content: str
+    description: str = ""
+    project_id: str
+    section_id: str | None = None
+    parent_id: str | None = None
+    order: int
+    priority: int = 1
+    labels: list[str] = Field(default_factory=list)
+    due: dict[str, Any] | None = None
+    url: str = ""
+
+    is_completed: bool = False
+    created_at: str
+    creator_id: str = ""
+    assignee_id: str | None = None
+    assigner_id: str | None = None
+
+    @property
+    def due_date(self) -> str | None:
+        """Extract due date as string if available."""
+        if self.due and "date" in self.due:
+            date_value = self.due["date"]
+            return str(date_value) if date_value is not None else None
+        return None
+
+    @property
+    def priority_text(self) -> str:
+        """Convert priority number to text."""
+        priority_map = {4: "High", 3: "Medium", 2: "Low", 1: "None"}
+        return priority_map.get(self.priority, "None")
+
+    @classmethod
+    def from_api_task(cls, api_task: Any, is_completed: bool = False) -> "TodoistTask":
+        """Create TodoistTask from the API task object."""
+        # Convert due object to dict if present
+        due_dict = None
+        if api_task.due:
+            due_dict = {
+                "date": api_task.due.date,
+                "string": getattr(api_task.due, "string", ""),
+                "datetime": getattr(api_task.due, "datetime", None),
+                "timezone": getattr(api_task.due, "timezone", None),
+                "is_recurring": getattr(api_task.due, "is_recurring", False),
+            }
+
+        return cls(
+            id=api_task.id,
+            content=api_task.content,
+            description=api_task.description or "",
+            project_id=api_task.project_id,
+            section_id=api_task.section_id,
+            parent_id=api_task.parent_id,
+            order=api_task.order,
+            priority=api_task.priority,
+            labels=api_task.labels or [],
+            due=due_dict,
+            url=api_task.url,
+            is_completed=is_completed,
+            created_at=str(api_task.created_at),
+            creator_id=api_task.creator_id or "",
+            assignee_id=api_task.assignee_id,
+            assigner_id=api_task.assigner_id,
+        )
+
+
+class TodoistComment(BaseModel):
+    """Represents a comment on a Todoist task."""
+
+    id: str
+    task_id: str
+    content: str
+    posted_at: str
+    attachment: dict[str, Any] | None = None
+
+    @classmethod
+    def from_api_comment(cls, api_comment: Any) -> "TodoistComment":
+        """Create TodoistComment from the API comment object."""
+        attachment_dict = None
+        if hasattr(api_comment, "attachment") and api_comment.attachment:
+            attachment_dict = {
+                "file_name": getattr(api_comment.attachment, "file_name", None),
+                "file_type": getattr(api_comment.attachment, "file_type", None),
+                "file_url": getattr(api_comment.attachment, "file_url", None),
+                "resource_type": getattr(api_comment.attachment, "resource_type", None),
+            }
+
+        return cls(
+            id=api_comment.id,
+            task_id=api_comment.task_id or "",
+            content=api_comment.content,
+            posted_at=str(api_comment.posted_at),
+            attachment=attachment_dict,
+        )
+
+
+class TodoistAPIError(Exception):
+    """Custom exception for Todoist API errors."""
+
+    pass
+
+
+class TodoistClient:
+    """Client for interacting with the Todoist REST API."""
+
+    def __init__(self, api_token: str):
+        """Initialize the Todoist client."""
+        if not todoist_available:
+            raise TodoistAPIError("todoist-api-python library is not available")
+        self.api_token = api_token
+        try:
+            self._api = TodoistAPI(api_token)  # type: ignore
+        except Exception as e:
+            raise TodoistAPIError(f"Failed to initialize Todoist API client: {e}") from e
+
+    def get_projects(self) -> list[TodoistProject]:
+        """Fetch all projects."""
+        try:
+            api_projects_paginator = self._api.get_projects()
+            all_projects = []
+            for projects_page in api_projects_paginator:
+                for project in projects_page:
+                    all_projects.append(TodoistProject.from_api_project(project))
+            return all_projects
+        except Exception as e:
+            raise TodoistAPIError(f"Failed to fetch projects: {e}") from e
+
+    def get_sections(self, project_id: str | None = None) -> list[TodoistSection]:
+        """Fetch sections, optionally filtered by project."""
+        try:
+            if project_id:
+                api_sections_paginator = self._api.get_sections(project_id=project_id)
+            else:
+                api_sections_paginator = self._api.get_sections()
+
+            all_sections = []
+            for sections_page in api_sections_paginator:
+                for section in sections_page:
+                    all_sections.append(TodoistSection.from_api_section(section))
+            return all_sections
+        except Exception as e:
+            raise TodoistAPIError(f"Failed to fetch sections: {e}") from e
+
+    def get_tasks(self, project_id: str | None = None, filter_expr: str | None = None) -> list[TodoistTask]:
+        """Fetch tasks, optionally filtered by project or filter expression."""
+        try:
+            if filter_expr:
+                api_tasks_paginator = self._api.filter_tasks(query=filter_expr)
+            elif project_id:
+                api_tasks_paginator = self._api.get_tasks(project_id=project_id)
+            else:
+                api_tasks_paginator = self._api.get_tasks()
+
+            all_tasks = []
+            for tasks_page in api_tasks_paginator:
+                for task in tasks_page:
+                    all_tasks.append(TodoistTask.from_api_task(task))
+            return all_tasks
+        except Exception as e:
+            raise TodoistAPIError(f"Failed to fetch tasks: {e}") from e
+
+    def get_task_comments(self, task_id: str) -> list[TodoistComment]:
+        """Fetch comments for a specific task."""
+        try:
+            comments_iterator = self._api.get_comments(task_id=task_id)
+            all_comments = []
+            for comments_page in comments_iterator:
+                for comment in comments_page:
+                    all_comments.append(TodoistComment.from_api_comment(comment))
+            return all_comments
+        except Exception as e:
+            raise TodoistAPIError(f"Failed to fetch comments for task {task_id}: {e}") from e
+
+
+@dataclass
+class ExportConfig:
+    """Configuration for the export process."""
+
+    output_dir: Path
+    include_completed: bool = False
+    include_comments: bool = True
+    date_format: str = "%Y-%m-%d"
+    time_format: str = "%H:%M"
+    tag_prefix: str = "todoist"
+    priority_as_tags: bool = True
+    labels_as_tags: bool = True
+
+
+class ObsidianExporter:
+    """Export Todoist tasks as Obsidian markdown notes."""
+
+    def __init__(self, config: ExportConfig):
+        """Initialize the exporter with configuration."""
+        self.config = config
+        self.output_dir = Path(config.output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    def sanitize_filename(self, name: str) -> str:
+        """Sanitize a string for use as a filename."""
+        ascii_name = unicodedata.normalize("NFKD", name)
+        ascii_name = ascii_name.encode("ascii", "ignore").decode("ascii")
+        sanitized = re.sub(r'[<>:"/\\|?*]', "_", ascii_name)
+        sanitized = re.sub(r"_+", "_", sanitized)
+        sanitized = sanitized.strip("_ ")
+        if len(sanitized) > 200:
+            sanitized = sanitized[:200].rstrip("_")
+        return sanitized or "untitled"
+
+    def format_yaml_string(self, value: str) -> str:
+        """Format a string value for safe YAML output."""
+        if "'" in value and '"' not in value:
+            return f'"{value}"'
+        if '"' in value and "'" not in value:
+            return f"'{value}'"
+        if '"' in value or "'" in value or "\n" in value or "\t" in value or "\\" in value:
+            escaped = value.replace("\\", "\\\\")
+            escaped = escaped.replace('"', '\\"')
+            escaped = escaped.replace("\n", "\\n")
+            escaped = escaped.replace("\t", "\\t")
+            return f'"{escaped}"'
+        return f'"{value}"'
+
+    def format_tags(self, task: TodoistTask, project: TodoistProject) -> list[str]:
+        """Generate tags for a task."""
+        tags = []
+        tags.append(f"#{self.config.tag_prefix}")
+
+        project_tag = self.sanitize_filename(project.name.lower().replace(" ", "-"))
+        tags.append(f"#{self.config.tag_prefix}/{project_tag}")
+
+        if self.config.priority_as_tags and task.priority > 1:
+            priority_name = task.priority_text.lower()
+            tags.append(f"#{self.config.tag_prefix}/priority/{priority_name}")
+
+        if self.config.labels_as_tags:
+            for label in task.labels:
+                label_tag = self.sanitize_filename(label.lower().replace(" ", "-"))
+                tags.append(f"#{self.config.tag_prefix}/label/{label_tag}")
+
+        status = "completed" if task.is_completed else "active"
+        tags.append(f"#{self.config.tag_prefix}/status/{status}")
+
+        return tags
+
+    def format_frontmatter(
+        self,
+        task: TodoistTask,
+        project: TodoistProject,
+        section: TodoistSection | None = None,
+    ) -> str:
+        """Generate YAML frontmatter for a task."""
+        frontmatter = ["---"]
+        frontmatter.append(f"title: {self.format_yaml_string(task.content)}")
+        frontmatter.append(f"todoist_id: {self.format_yaml_string(task.id)}")
+        frontmatter.append(f"project: {self.format_yaml_string(project.name)}")
+        frontmatter.append(f'project_id: "{project.id}"')
+
+        if section:
+            frontmatter.append(f"section: {self.format_yaml_string(section.name)}")
+            frontmatter.append(f'section_id: "{section.id}"')
+
+        frontmatter.append(f'created: "{task.created_at}"')
+
+        if task.due_date:
+            frontmatter.append(f'due_date: "{task.due_date}"')
+
+        frontmatter.append(f"priority: {task.priority}")
+        frontmatter.append(f'priority_text: "{task.priority_text}"')
+
+        if task.labels:
+            labels_str = '", "'.join(task.labels)
+            frontmatter.append(f'labels: ["{labels_str}"]')
+
+        frontmatter.append(f"completed: {str(task.is_completed).lower()}")
+
+        if task.url:
+            frontmatter.append(f'todoist_url: "{task.url}"')
+
+        tags = self.format_tags(task, project)
+        if tags:
+            tags_str = '", "'.join(tag.lstrip("#") for tag in tags)
+            frontmatter.append(f'tags: ["{tags_str}"]')
+
+        frontmatter.append("---")
+        frontmatter.append("")
+        return "\n".join(frontmatter)
+
+    def format_task_content(
+        self,
+        task: TodoistTask,
+        project: TodoistProject,
+        comments: list[TodoistComment] | None = None,
+        child_tasks: list[TodoistTask] | None = None,
+        section: TodoistSection | None = None,
+    ) -> str:
+        """Format a task as markdown content."""
+        content = []
+        content.append(self.format_frontmatter(task, project, section))
+
+        status_icon = "✅" if task.is_completed else "⬜"
+        content.append(f"# {status_icon} {task.content}")
+        content.append("")
+
+        if task.description:
+            content.append("## Description")
+            content.append("")
+            content.append(task.description)
+            content.append("")
+
+        if child_tasks:
+            content.append("## Subtasks")
+            content.append("")
+            for child_task in sorted(child_tasks, key=lambda t: t.order):
+                checkbox = "[x]" if child_task.is_completed else "[ ]"
+                content.append(f"- {checkbox} {child_task.content}")
+            content.append("")
+
+        if comments and self.config.include_comments:
+            content.append("## Comments")
+            content.append("")
+            for comment in comments:
+                dt_object = datetime.datetime.fromisoformat(comment.posted_at.replace("Z", "+00:00"))
+                formatted_datetime = dt_object.strftime("%d %b %H:%M")
+                content.append(f"* {formatted_datetime} - {comment.content}")
+
+        return "\n".join(content)
+
+    def get_output_path(self, task: TodoistTask, project: TodoistProject) -> Path:  # noqa: ARG002
+        """Determine the output path for a task note."""
+        filename = task.id
+        return self.output_dir / f"{filename}.md"
+
+    def export_task(
+        self,
+        task: TodoistTask,
+        project: TodoistProject,
+        comments: list[TodoistComment] | None = None,
+        child_tasks: list[TodoistTask] | None = None,
+        section: TodoistSection | None = None,
+    ) -> Path:
+        """Export a single task as a markdown note."""
+        output_path = self.get_output_path(task, project)
+
+        if task.is_completed and not self.config.include_completed:
+            return output_path
+
+        # Preserve existing user content after ---
+        existing_user_content = ""
+        if output_path.exists():
+            try:
+                with open(output_path, encoding="utf-8") as f:
+                    existing_content = f.read()
+
+                lines = existing_content.split("\n")
+                separators = []
+                for i, line in enumerate(lines):
+                    if line.strip() == "---":
+                        separators.append(i)
+
+                if len(separators) >= 3:
+                    user_content_start = separators[2] + 1
+                    user_lines = lines[user_content_start:]
+                    if user_lines and any(line.strip() for line in user_lines):
+                        existing_user_content = "\n".join(user_lines)
+                        if existing_user_content.strip():
+                            existing_user_content = "\n\n---\n\n" + existing_user_content
+            except Exception:
+                pass  # Ignore errors reading existing file
+
+        new_content = self.format_task_content(task, project, comments, child_tasks, section)
+        final_content = new_content + existing_user_content
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(final_content)
+
+        return output_path
+
+
+def export_tasks_internal(
+    client: TodoistClient,
+    export_config: ExportConfig,
+    project_id: str | None = None,
+    project_name: str | None = None,
+    filter_expr: str | None = None,
+    include_completed: bool = False,
+) -> int:
+    """Internal function to export tasks."""
+    # Get projects
+    projects = client.get_projects()
+    projects_dict = {p.id: p for p in projects}
+
+    # Get sections
+    sections = client.get_sections()
+    sections_dict = {s.id: s for s in sections}
+
+    # Resolve project name to ID if needed
+    target_project_id = project_id
+    if project_name and not project_id:
+        matching_projects = [p for p in projects if p.name.lower() == project_name.lower()]
+        if not matching_projects:
+            raise TodoistAPIError(f"Project '{project_name}' not found")
+        target_project_id = matching_projects[0].id
+
+    # Get tasks
+    tasks = client.get_tasks(project_id=target_project_id, filter_expr=filter_expr)
+
+    if not tasks:
+        return 0
+
+    # Group tasks by parent/child relationship
+    parent_tasks = []
+    child_tasks_by_parent: dict[str, list[TodoistTask]] = {}
+
+    for task in tasks:
+        # Skip tasks that start with *
+        if task.content.startswith("*"):
+            continue
+
+        if task.parent_id:
+            if task.parent_id not in child_tasks_by_parent:
+                child_tasks_by_parent[task.parent_id] = []
+            child_tasks_by_parent[task.parent_id].append(task)
+        else:
+            parent_tasks.append(task)
+
+    # Initialize exporter
+    exporter = ObsidianExporter(export_config)
+
+    # Export only parent tasks
+    exported_count = 0
+    for task in parent_tasks:
+        project = projects_dict.get(task.project_id)
+        if not project:
+            continue
+
+        if task.is_completed and not include_completed:
+            continue
+
+        # Get child tasks for this parent
+        child_tasks = child_tasks_by_parent.get(task.id, [])
+
+        # Get comments if enabled
+        comments = None
+        if export_config.include_comments:
+            try:
+                comments = client.get_task_comments(task.id)
+            except TodoistAPIError:
+                comments = None  # Ignore comment fetch errors
+
+        # Get section for this task
+        section = sections_dict.get(task.section_id) if task.section_id else None
+
+        # Export the task with its child tasks
+        try:
+            exporter.export_task(task, project, comments, child_tasks, section)
+            exported_count += 1
+        except Exception:
+            pass  # Ignore export errors for individual tasks
+
+    return exported_count
 
 
 def parse_todoist_frontmatter(content: str) -> tuple[str | None, str | None, str | None, str | None]:

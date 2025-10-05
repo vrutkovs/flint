@@ -363,6 +363,63 @@ Configure `SCHEDULED_DIARY_TIME` and `DAILY_NOTE_FOLDER` to automatically genera
 
 The bot will send a confirmation message when the diary is successfully saved.
 
+#### Todoist Task Sync
+Configure automatic synchronization of your Todoist tasks to Obsidian-compatible markdown notes:
+
+**Required Environment Variables:**
+- `TODOIST_API_TOKEN`: Your Todoist API token (get from https://todoist.com/prefs/integrations)
+- `TODOIST_NOTES_FOLDER`: Directory where task notes will be saved
+- `TODOIST_NOTES_SCHEDULE`: Sync interval (default: `1h`, examples: `30m`, `2h`)
+
+**Features:**
+- **Periodic Sync**: Automatically syncs tasks every specified interval
+- **Markdown Export**: Each task becomes a separate markdown file named by task ID
+- **Frontmatter**: YAML metadata including project, priority, labels, due dates
+- **Subtasks**: Child tasks are included as checkboxes in the parent task note
+- **Comments**: Task comments are preserved (configurable)
+- **User Content**: Preserves any manual notes added after the `---` separator
+
+**Generated File Format:**
+```markdown
+---
+title: "Complete project documentation"
+todoist_id: "1234567890"
+project: "Work"
+priority: 3
+priority_text: "Medium"
+labels: ["urgent", "documentation"]
+completed: false
+due_date: "2024-03-15"
+tags: ["todoist", "todoist/work", "todoist/priority/medium"]
+---
+
+# ⬜ Complete project documentation
+
+## Description
+Review and update all API documentation for the new release.
+
+## Subtasks
+- [ ] Update endpoint descriptions
+- [x] Add new authentication examples
+- [ ] Review code samples
+
+## Comments
+* 14 Mar 10:30 - Started working on this task
+* 14 Mar 15:45 - Need to coordinate with backend team
+
+---
+
+<!-- Your personal notes can go here and will be preserved -->
+```
+
+**Setup:**
+1. Get your Todoist API token from https://todoist.com/prefs/integrations
+2. Set the required environment variables
+3. Install the todoist-api-python dependency: `pip install todoist-api-python`
+4. Restart Flint - sync will start automatically
+
+The bot will send notifications when sync completes, showing the number of tasks exported.
+
 #### Understanding Message Flow
 
 **Regular Text Messages:**

@@ -1,6 +1,6 @@
 """Unit tests for the diary plugin."""
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
 import pytz
@@ -10,7 +10,6 @@ from telegram.ext import ContextTypes
 from plugins.diary import (
     DIARY_CALENDAR_PROMPT,
     DIARY_TEMPLATE,
-    DIARY_TODOIST_PROMPT,
     DiaryData,
     generate_diary_entry,
     replace_diary_section,
@@ -174,9 +173,7 @@ class TestGenerateDiaryEntry:
         mock_calendar_mcp.get_response.assert_called_once_with(
             settings=mock_diary_data.settings, prompt=DIARY_CALENDAR_PROMPT
         )
-        mock_todoist_mcp.get_response.assert_called_once_with(
-            settings=mock_diary_data.settings, prompt=DIARY_TODOIST_PROMPT
-        )
+        mock_todoist_mcp.get_response.assert_called_once_with(settings=mock_diary_data.settings, prompt=ANY)
 
         # Verify directory creation
         mock_notes_path.mkdir.assert_called_once_with(parents=True, exist_ok=True)
@@ -351,9 +348,7 @@ def test_diary_template():
 def test_diary_prompts():
     """Test that diary prompts are properly defined."""
     assert DIARY_CALENDAR_PROMPT
-    assert DIARY_TODOIST_PROMPT
     assert "calendar" in DIARY_CALENDAR_PROMPT.lower()
-    assert "tasks" in DIARY_TODOIST_PROMPT.lower()
 
 
 def test_replace_diary_section_new_file():

@@ -1,6 +1,7 @@
 import datetime
 import os
 import sys
+from pathlib import Path
 from typing import Final
 
 import structlog
@@ -10,6 +11,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from plugins.diary import DiaryData, generate_diary_entry
 from plugins.schedule import ScheduleData, send_agenda
+from plugins.todoist import ExportConfig, TodoistData, sync_todoist_tasks
 from telega.main import Telega
 from telega.settings import Settings
 
@@ -70,6 +72,8 @@ MCP_WEATHER_NAME: str | None = os.environ.get("MCP_WEATHER_NAME")
 
 DAILY_NOTE_FOLDER: str | None = os.environ.get("DAILY_NOTE_FOLDER")
 TODOIST_NOTES_FOLDER: str | None = os.environ.get("TODOIST_NOTES_FOLDER")
+TODOIST_NOTES_SCHEDULE: str | None = os.environ.get("TODOIST_NOTES_SCHEDULE", "1h")
+TODOIST_API_TOKEN: str | None = os.environ.get("TODOIST_API_TOKEN")
 
 SYSTEM_INSTRUCTIONS: str = os.environ.get("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
@@ -218,6 +222,50 @@ if SCHEDULED_DIARY_TIME and settings.daily_note_folder:
         log.info("TODOIST_NOTES_FOLDER not set - diary will work without task data")
 elif SCHEDULED_DIARY_TIME:
     log.warning("SCHEDULED_DIARY_TIME is set but DAILY_NOTE_FOLDER is missing. Diary scheduling will not be enabled.")
+
+# Create scheduler for Todoist sync
+if TODOIST_NOTES_FOLDER and TODOIST_API_TOKEN and TODOIST_NOTES_SCHEDULE:
+    job_queue = app.job_queue
+    if not job_queue:
+        log.error("Failed to create job queue")
+        sys.exit(1)
+
+    # Parse schedule interval (e.g., "1h", "30m", "2h")
+    schedule_value = TODOIST_NOTES_SCHEDULE
+    if schedule_value.endswith("h"):
+        hours = int(schedule_value[:-1])
+        interval_seconds = hours * 3600
+    elif schedule_value.endswith("m"):
+        minutes = int(schedule_value[:-1])
+        interval_seconds = minutes * 60
+    else:
+        # Default to 1 hour if format is not recognized
+        interval_seconds = 3600
+        log.warning(f"Unrecognized schedule format '{schedule_value}', defaulting to 1 hour")
+
+    # Configure export
+    export_config = ExportConfig(
+        output_dir=Path(TODOIST_NOTES_FOLDER), include_completed=False, include_comments=True, tag_prefix="todoist"
+    )
+
+    todoist_data = TodoistData(settings=settings, api_token=TODOIST_API_TOKEN, export_config=export_config)
+
+    job_queue.run_repeating(
+        sync_todoist_tasks,
+        interval=interval_seconds,
+        first=30,  # Start after 30 seconds
+        chat_id=int(CHAT_ID),
+        data=todoist_data,
+    )
+
+    log.info(f"Scheduled Todoist sync every {schedule_value} to folder: {TODOIST_NOTES_FOLDER}")
+elif TODOIST_NOTES_FOLDER or TODOIST_API_TOKEN:
+    missing = []
+    if not TODOIST_NOTES_FOLDER:
+        missing.append("TODOIST_NOTES_FOLDER")
+    if not TODOIST_API_TOKEN:
+        missing.append("TODOIST_API_TOKEN")
+    log.warning(f"Todoist sync not enabled - missing: {', '.join(missing)}")
 
 # Start the bot
 try:

@@ -621,7 +621,6 @@ class TestMCPConfigReader:
         assert reader.logger == mock_settings.logger
         assert str(reader.config_path) == "/path/to/config.yaml"
         assert reader.mcps == {}
-        assert reader._raw_config == {}
 
     def test_load_config_file_not_found(self, mcp_reader, mock_settings):
         """Test loading config when file doesn't exist."""

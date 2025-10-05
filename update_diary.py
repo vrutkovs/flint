@@ -43,7 +43,6 @@ sys.path.insert(0, str(src_dir))
 from plugins.diary import (  # noqa: E402
     DIARY_CALENDAR_PROMPT,
     DIARY_TEMPLATE,
-    DIARY_TODOIST_PROMPT,
     replace_diary_section,
 )
 from plugins.mcp import MCPClient, MCPConfigReader  # noqa: E402
@@ -278,7 +277,7 @@ async def fetch_tasks_data(settings: Settings, target_date: datetime.date) -> st
         )
 
         # Create date-specific prompt
-        date_prompt = f"{DIARY_TODOIST_PROMPT}\n\nFocus on tasks completed on {target_date.strftime('%Y-%m-%d')} only."
+        date_prompt = f"Summarize tasks I completed today from Todoist - list only tasks completed today.\nFocus on tasks completed on {target_date.strftime('%Y-%m-%d')} only."
 
         tasks_data = await todoist_mcp.get_response(settings=settings, prompt=date_prompt)
         log.info("Tasks data fetched successfully")
@@ -316,6 +315,8 @@ def get_diary_file_path(settings: Settings, target_date: datetime.date) -> Path:
     Returns:
         Path to diary file
     """
+    if settings.daily_note_folder is None:
+        raise ValueError("daily_note_folder setting is required")
     notes_path = Path(settings.daily_note_folder)
     filename = f"{target_date.strftime('%Y-%m-%d')}.md"
     return notes_path / filename
@@ -388,7 +389,7 @@ async def main() -> None:
 
     # Validate environment and create settings
     try:
-        settings, genai_client = validate_environment()
+        settings, _ = validate_environment()
     except SystemExit:
         return
 
