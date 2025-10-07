@@ -104,6 +104,8 @@ class Telega:
         return True
 
     async def _convert_markdown_to_telegram_html(self, text: str) -> str:
+        # Replace triple asterisks with a line break before markdown conversion
+        text = text.replace("***", "<br/>")
         return telegram_format(text.strip())
 
     async def send_message(self, bot: ExtBot[None], chat_id: int, text: str) -> None:
