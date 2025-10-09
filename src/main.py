@@ -162,7 +162,7 @@ if SCHEDULED_AGENDA_TIME and MCP_CALENDAR_NAME and MCP_WEATHER_NAME:
     hour: int
     minute: int
     hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(":"))
-    schedule_time: datetime.time = datetime.time(hour=hour, minute=minute, tzinfo=settings.timezone)
+    schedule_time: datetime.time = datetime.time(hour=hour, minute=minute)
     scheduleData: ScheduleData = ScheduleData(settings=settings, genai_client=genai_client)
 
     job_queue.run_daily(
@@ -191,7 +191,7 @@ if SCHEDULED_DIARY_TIME and settings.daily_note_folder:
     diary_hour: int
     diary_minute: int
     diary_hour, diary_minute = map(int, SCHEDULED_DIARY_TIME.split(":"))
-    diary_schedule_time: datetime.time = datetime.time(hour=diary_hour, minute=diary_minute, tzinfo=settings.timezone)
+    diary_schedule_time: datetime.time = datetime.time(hour=diary_hour, minute=diary_minute)
     diary_data: DiaryData = DiaryData(settings=settings, genai_client=genai_client)
 
     job_queue.run_daily(

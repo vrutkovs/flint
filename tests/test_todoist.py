@@ -6,7 +6,6 @@ from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
 import pytest
-import pytz
 
 from utils.todoist import (
     ExportConfig,
@@ -380,14 +379,14 @@ completed: false
 
     def test_is_file_modified_today(self):
         """Test file modification date checking."""
-        timezone = pytz.timezone("UTC")
+        today = datetime.datetime.now()
 
         with TemporaryDirectory() as temp_dir:
             test_file = Path(temp_dir) / "test.md"
             test_file.write_text("test content")
 
             # File should be modified today since we just created it
-            assert is_file_modified_today(test_file, timezone) is True
+            assert is_file_modified_today(test_file, today) is True
 
     def test_extract_comments_section(self):
         """Test extracting comments section."""
@@ -473,8 +472,7 @@ class TestIntegrationFunctions:
 
     def test_scan_todoist_completed_tasks_today(self):
         """Test scanning for completed tasks today."""
-        timezone = pytz.timezone("UTC")
-        today = datetime.datetime.now(timezone).date()
+        today = datetime.datetime.now().date()
 
         with TemporaryDirectory() as temp_dir:
             # Create a completed task file
@@ -491,7 +489,7 @@ completed: true
             task_file = Path(temp_dir) / "123.md"
             task_file.write_text(task_content)
 
-            result = scan_todoist_completed_tasks_today(temp_dir, timezone)
+            result = scan_todoist_completed_tasks_today(temp_dir, today)
 
             assert "Work - Done:" in result
             assert "Completed Task" in result
@@ -499,8 +497,7 @@ completed: true
 
     def test_scan_todoist_comments_for_today(self):
         """Test scanning for comments made today."""
-        timezone = pytz.timezone("UTC")
-        today = datetime.datetime.now(timezone).strftime("%d %b")
+        today = datetime.datetime.now().strftime("%d %b")
 
         with TemporaryDirectory() as temp_dir:
             # Create a task file with today's comments
@@ -520,7 +517,7 @@ project: "Personal"
             task_file = Path(temp_dir) / "456.md"
             task_file.write_text(task_content)
 
-            result = scan_todoist_comments_for_today(temp_dir, timezone)
+            result = scan_todoist_comments_for_today(temp_dir)
 
             assert "Personal:" in result
             assert "Task with Comments" in result

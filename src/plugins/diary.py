@@ -87,11 +87,12 @@ async def fetch_calendar_data(settings: Settings, mcps: MCPConfigReader) -> str 
         return None
 
 
-def fetch_completed_tasks_data(settings: Settings) -> str | None:
+def fetch_completed_tasks_data(settings: Settings, today: datetime.date) -> str | None:
     """Fetch completed tasks data from Todoist folder.
 
     Args:
         settings: Settings object containing configuration
+        today: Today's date
 
     Returns:
         Completed tasks data string or None if not available
@@ -101,7 +102,7 @@ def fetch_completed_tasks_data(settings: Settings) -> str | None:
         return None
 
     try:
-        tasks_done = scan_todoist_completed_tasks_today(settings.todoist_notes_folder, settings.timezone)
+        tasks_done = scan_todoist_completed_tasks_today(settings.todoist_notes_folder, today)
         settings.logger.info("Todoist completed tasks scanned from folder")
         return tasks_done
     except Exception as e:
@@ -109,11 +110,12 @@ def fetch_completed_tasks_data(settings: Settings) -> str | None:
         return None
 
 
-def fetch_in_progress_tasks_data(settings: Settings) -> str:
+def fetch_in_progress_tasks_data(settings: Settings, today: datetime.date) -> str:
     """Fetch in-progress tasks data from Todoist folder.
 
     Args:
         settings: Settings object containing configuration
+        today: Today's date
 
     Returns:
         Formatted in-progress section string (empty if not available)
@@ -123,7 +125,7 @@ def fetch_in_progress_tasks_data(settings: Settings) -> str:
         return ""
 
     try:
-        tasks_in_progress = scan_todoist_comments_for_today(settings.todoist_notes_folder, settings.timezone)
+        tasks_in_progress = scan_todoist_comments_for_today(settings.todoist_notes_folder, today)
         settings.logger.info("Todoist in-progress data scanned from folder")
         return DIARY_TEMPLATE_WITH_IN_PROGRESS.format(
             tasks_in_progress=tasks_in_progress or "No tasks in progress today"
@@ -235,7 +237,7 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     settings.logger.info("Starting diary entry generation")
 
     # Get current date and time
-    now = datetime.datetime.now(settings.timezone)
+    now = datetime.datetime.now()
     date_str = now.strftime("%Y-%m-%d")
 
     # Initialize MCP configuration
@@ -244,8 +246,8 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Fetch all diary components
     calendar_data = await fetch_calendar_data(settings, mcps)
-    tasks_done = fetch_completed_tasks_data(settings)
-    in_progress_section = fetch_in_progress_tasks_data(settings)
+    tasks_done = fetch_completed_tasks_data(settings, now)
+    in_progress_section = fetch_in_progress_tasks_data(settings, now)
 
     # Create diary entry content
     diary_entry = create_diary_content(calendar_data, tasks_done, in_progress_section)

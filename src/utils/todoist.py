@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple
 
-import pytz
 import structlog
 from pydantic import BaseModel, Field
 
@@ -114,7 +113,6 @@ class TodoistTask(BaseModel):
                 "date": api_task.due.date,
                 "string": getattr(api_task.due, "string", ""),
                 "datetime": getattr(api_task.due, "datetime", None),
-                "timezone": getattr(api_task.due, "timezone", None),
                 "is_recurring": getattr(api_task.due, "is_recurring", False),
             }
 
@@ -588,19 +586,17 @@ def is_task_completed(content: str) -> bool:
     return "completed: true" in content
 
 
-def is_file_modified_today(file_path: Path, timezone: pytz.tzinfo.BaseTzInfo) -> bool:
+def is_file_modified_today(file_path: Path, today: datetime.date) -> bool:
     """Check if file was modified today.
 
     Args:
         file_path: Path to the file
-        timezone: Timezone for date comparison
 
     Returns:
         True if file was modified today
     """
-    today = datetime.datetime.now(timezone).date()
     file_stat = file_path.stat()
-    file_modified_date = datetime.datetime.fromtimestamp(file_stat.st_mtime, tz=timezone).date()
+    file_modified_date = datetime.datetime.fromtimestamp(file_stat.st_mtime).date()
     return file_modified_date == today
 
 
@@ -631,17 +627,17 @@ def get_todoist_files(todoist_folder: str) -> list[Path]:
     return list(todoist_path.glob("*.md"))
 
 
-def scan_todoist_completed_tasks_today(todoist_folder: str, timezone: pytz.tzinfo.BaseTzInfo) -> str:
+def scan_todoist_completed_tasks_today(todoist_folder: str, today: datetime.date) -> str:
     """Scan Todoist folder for tasks completed today.
 
     Args:
         todoist_folder: Path to the Todoist folder
-        timezone: Timezone to use for date comparison
+        today: Date object representing today's date
 
     Returns:
         Formatted string with today's completed tasks grouped by project
     """
-    today = datetime.datetime.now(timezone).date()
+    print(f"Today's date: {today}")
     completed_by_project = {}
 
     todoist_files = get_todoist_files(todoist_folder)
@@ -663,7 +659,7 @@ def scan_todoist_completed_tasks_today(todoist_folder: str, timezone: pytz.tzinf
             continue
 
         # Check file modification time to see if completed today
-        if is_file_modified_today(md_file, timezone):
+        if is_file_modified_today(md_file, today):
             clean_title = clean_title_for_obsidian_link(title)
             task_entry = f"* [x] [[Todoist/{todoist_id}|{clean_title}]] ✅ {today}"
 
@@ -722,17 +718,15 @@ def parse_comment_line(line: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-def scan_todoist_comments_for_today(todoist_folder: str, timezone: pytz.tzinfo.BaseTzInfo) -> str:
+def scan_todoist_comments_for_today(todoist_folder: str, today: datetime.date) -> str:
     """Scan Todoist folder for comments made today.
 
     Args:
         todoist_folder: Path to the Todoist folder
-        timezone: Timezone to use for date comparison
-
     Returns:
         Formatted string with today's comments grouped by project
     """
-    today = datetime.datetime.now(timezone).strftime("%d %b")
+    today_str = today.strftime("%d %b")
     comments_by_project = {}
 
     todoist_files = get_todoist_files(todoist_folder)
@@ -761,7 +755,7 @@ def scan_todoist_comments_for_today(todoist_folder: str, timezone: pytz.tzinfo.B
                 continue
 
             comment_date, comment_text = parse_comment_line(line)
-            if comment_date == today and comment_text:
+            if comment_date == today_str and comment_text:
                 task_comments.append(f"\t* {comment_text}")
 
         if task_comments:

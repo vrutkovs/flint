@@ -3,7 +3,6 @@
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, cast
 
-import pytz
 import structlog
 from google import genai
 from telegram.ext import ExtBot
@@ -21,7 +20,6 @@ class Settings:
         genai_client: genai.Client,
         logger: structlog.BoundLogger,
         chat_id: str,
-        tz: str,
         mcp_config_path: str,
         mcp_calendar_name: str,
         mcp_weather_name: str,
@@ -62,7 +60,6 @@ class Settings:
         self.logger: structlog.BoundLogger = logger
         self.model_name: str = model_name
         self.chat_id: str = chat_id
-        self.timezone: pytz.tzinfo.BaseTzInfo = pytz.timezone(tz)
         self.mcp_config_path: str = mcp_config_path
         self.agenda_mcp_calendar_name: str = mcp_calendar_name
         self.agenda_mcp_weather_name: str = mcp_weather_name
