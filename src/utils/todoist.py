@@ -261,8 +261,6 @@ class TodoistClient:
                     all_completed_tasks.append(
                         TodoistTask.from_api_task(item, is_completed=True, completed_date=completion_date.isoformat())
                     )
-            print(f"Completed tasks fetched for date {completion_date.isoformat()}")
-            print(f"Total completed tasks: {len(all_completed_tasks)}")
             return all_completed_tasks
         except Exception as e:
             raise TodoistAPIError(f"Failed to fetch completed tasks for date {completion_date.isoformat()}: {e}") from e
@@ -505,7 +503,7 @@ def export_tasks_internal(
 
     # Fetch completed tasks for today if include_completed is True
     if include_completed:
-        today = datetime.datetime.now() - datetime.timedelta(days=1)
+        today = datetime.datetime.now()
         completed_tasks_today = client.get_completed_tasks_by_completion_date(today)
 
         # Filter completed tasks by project_id if specified
