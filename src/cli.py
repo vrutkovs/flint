@@ -343,9 +343,18 @@ async def export_todoist_tasks_command(args: argparse.Namespace) -> None:
     _ = validate_environment()
     log.info("Starting Todoist tasks export")
 
+    token = os.getenv("TODOIST_API_TOKEN")
+    if not token:
+        log.error("Missing required environment variable: TODOIST_API_TOKEN")
+        sys.exit(1)
+    folder = os.getenv("TODOIST_NOTES_FOLDER")
+    if not folder:
+        log.error("Missing required environment variable: TODOIST_NOTES_FOLDER")
+        sys.exit(1)
+
     try:
-        client = TodoistClient(os.getenv("TODOIST_API_TOKEN"))
-        export_config = ExportConfig(os.getenv("TODOIST_NOTES_FOLDER"), include_completed=True, include_comments=True)
+        client = TodoistClient(token)
+        export_config = ExportConfig(Path(folder), include_completed=True, include_comments=True)
 
         exported_count = await asyncio.get_event_loop().run_in_executor(
             None,
