@@ -44,7 +44,7 @@ DIARY_TEMPLATE_WITH_IN_PROGRESS: Final[str] = """
 {tasks_in_progress}"""
 
 DIARY_CALENDAR_PROMPT: Final[str] = """
-Summarize what happened today in my calendar - list completed events and meetings from today only.
+Summarize what happened {date} in my calendar - list completed events and meetings from today only.
 Output them in format:
 * <time> - <short one sentence description of the event>
 
@@ -53,12 +53,13 @@ IT IS VITAL NOT TO INCLUDE ANY OTHER INFORMATION OR LINES EXCEPT THE LIST OF EVE
 """
 
 
-async def fetch_calendar_data(settings: Settings, mcps: MCPConfigReader) -> str | None:
+async def fetch_calendar_data(settings: Settings, mcps: MCPConfigReader, target_date: datetime.date) -> str | None:
     """Fetch calendar data using MCP client.
 
     Args:
         settings: Settings object containing configuration
         mcps: MCP configuration reader
+        target_date: Date for which to fetch calendar data
 
     Returns:
         Calendar data string or None if not available
@@ -79,7 +80,8 @@ async def fetch_calendar_data(settings: Settings, mcps: MCPConfigReader) -> str 
             server_params=server_params,
             logger=settings.logger,
         )
-        calendar_data = await calendar_mcp.get_response(settings=settings, prompt=DIARY_CALENDAR_PROMPT)
+        prompt = DIARY_CALENDAR_PROMPT.format(date=target_date.strftime("%Y-%m-%d"))
+        calendar_data = await calendar_mcp.get_response(settings=settings, prompt=prompt)
         settings.logger.info("Calendar data fetched for diary")
         return calendar_data
     except Exception as e:
@@ -245,7 +247,7 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     mcps.reload_config()
 
     # Fetch all diary components
-    calendar_data = await fetch_calendar_data(settings, mcps)
+    calendar_data = await fetch_calendar_data(settings, mcps, now)
     tasks_done = fetch_completed_tasks_data(settings, now)
     in_progress_section = fetch_in_progress_tasks_data(settings, now)
 
