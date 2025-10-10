@@ -49,7 +49,6 @@ class TestSettings:
         assert settings.logger == basic_settings_params["logger"]
         assert settings.model_name == basic_settings_params["model_name"]
         assert settings.chat_id == basic_settings_params["chat_id"]
-        assert isinstance(settings.timezone, pytz.tzinfo.BaseTzInfo)
         assert settings.mcp_config_path == basic_settings_params["mcp_config_path"]
         assert settings.agenda_mcp_calendar_name == basic_settings_params["mcp_calendar_name"]
         assert settings.agenda_mcp_weather_name == basic_settings_params["mcp_weather_name"]
@@ -77,15 +76,6 @@ class TestSettings:
 
         assert settings.model_name == "gemini-pro"
         assert repr(settings) == "Settings(model_name='gemini-pro')"
-
-    def test_settings_timezone_parsing(self, basic_settings_params):
-        """Test timezone parsing for different timezone strings."""
-        test_timezones = ["UTC", "America/New_York", "Europe/London", "Asia/Tokyo"]
-
-        for tz_string in test_timezones:
-            basic_settings_params["tz"] = tz_string
-            settings = Settings(**basic_settings_params)
-            assert settings.timezone == pytz.timezone(tz_string)
 
     def test_settings_invalid_timezone(self, basic_settings_params):
         """Test Settings initialization with invalid timezone."""

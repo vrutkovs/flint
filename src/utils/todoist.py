@@ -85,6 +85,7 @@ class TodoistTask(BaseModel):
 
     is_completed: bool = False
     created_at: str
+    completed_date: str | None = None
     creator_id: str = ""
     assignee_id: str | None = None
     assigner_id: str | None = None
@@ -104,7 +105,9 @@ class TodoistTask(BaseModel):
         return priority_map.get(self.priority, "None")
 
     @classmethod
-    def from_api_task(cls, api_task: Any, is_completed: bool = False) -> "TodoistTask":
+    def from_api_task(
+        cls, api_task: Any, is_completed: bool = False, completed_date: str | None = None
+    ) -> "TodoistTask":
         """Create TodoistTask from the API task object."""
         # Convert due object to dict if present
         due_dict = None
@@ -130,6 +133,7 @@ class TodoistTask(BaseModel):
             url=api_task.url,
             is_completed=is_completed,
             created_at=str(api_task.created_at),
+            completed_date=completed_date,
             creator_id=api_task.creator_id or "",
             assignee_id=api_task.assignee_id,
             assigner_id=api_task.assigner_id,
@@ -243,6 +247,26 @@ class TodoistClient:
         except Exception as e:
             raise TodoistAPIError(f"Failed to fetch comments for task {task_id}: {e}") from e
 
+    def get_completed_tasks_by_completion_date(self, completion_date: datetime.datetime) -> list[TodoistTask]:
+        """Fetch completed tasks for a specific completion date."""
+        try:
+            start_time = completion_date.replace(hour=0, minute=0)
+            end_time = completion_date.replace(hour=23, minute=59)
+            completed_items_iterator = self._api.get_completed_tasks_by_completion_date(
+                since=start_time, until=end_time
+            )
+            all_completed_tasks = []
+            for items_page in completed_items_iterator:
+                for item in items_page:
+                    all_completed_tasks.append(
+                        TodoistTask.from_api_task(item, is_completed=True, completed_date=completion_date.isoformat())
+                    )
+            print(f"Completed tasks fetched for date {completion_date.isoformat()}")
+            print(f"Total completed tasks: {len(all_completed_tasks)}")
+            return all_completed_tasks
+        except Exception as e:
+            raise TodoistAPIError(f"Failed to fetch completed tasks for date {completion_date.isoformat()}: {e}") from e
+
 
 @dataclass
 class ExportConfig:
@@ -344,6 +368,9 @@ class ObsidianExporter:
             frontmatter.append(f'labels: ["{labels_str}"]')
 
         frontmatter.append(f"completed: {str(task.is_completed).lower()}")
+
+        if task.completed_date:
+            frontmatter.append(f'completed_date: "{task.completed_date}"')
 
         if task.url:
             frontmatter.append(f'todoist_url: "{task.url}"')
@@ -476,6 +503,17 @@ def export_tasks_internal(
     # Get tasks
     tasks = client.get_tasks(project_id=target_project_id, filter_expr=filter_expr)
 
+    # Fetch completed tasks for today if include_completed is True
+    if include_completed:
+        today = datetime.datetime.now() - datetime.timedelta(days=1)
+        completed_tasks_today = client.get_completed_tasks_by_completion_date(today)
+
+        # Filter completed tasks by project_id if specified
+        if target_project_id:
+            completed_tasks_today = [t for t in completed_tasks_today if t.project_id == target_project_id]
+
+        tasks.extend(completed_tasks_today)
+
     if not tasks:
         return 0
 
@@ -532,29 +570,31 @@ def export_tasks_internal(
     return exported_count
 
 
-def parse_todoist_frontmatter(content: str) -> tuple[str | None, str | None, str | None, str | None]:
-    """Parse title, todoist_id, project, and section from frontmatter.
+def parse_todoist_frontmatter(content: str) -> tuple[str | None, str | None, str | None, str | None, str | None]:
+    """Parse title, todoist_id, project, section, and completed_date from frontmatter.
 
     Args:
         content: File content with YAML frontmatter
 
     Returns:
-        Tuple of (title, todoist_id, project, section) or (None, None, None, None) if parsing fails
+        Tuple of (title, todoist_id, project, section, completed_date) or (None, None, None, None, None) if parsing fails
     """
     title_match = re.search(r'^title: "(.+)"$', content, re.MULTILINE)
     todoist_id_match = re.search(r'^todoist_id: "(.+)"$', content, re.MULTILINE)
     project_match = re.search(r'^project: "(.+)"$', content, re.MULTILINE)
     section_match = re.search(r'^section: "(.+)"$', content, re.MULTILINE)
+    completed_match = re.search(r'^completed: "(.+)"$', content, re.MULTILINE)
 
     if not title_match or not todoist_id_match:
-        return None, None, None, None
+        return None, None, None, None, None
 
     title = title_match.group(1)
     todoist_id = todoist_id_match.group(1)
     project = project_match.group(1) if project_match else "Other"
     section = section_match.group(1) if section_match else None
+    completed_date = completed_match.group(1) if completed_match else None
 
-    return title, todoist_id, project, section
+    return title, todoist_id, project, section, completed_date
 
 
 def read_todoist_file(file_path: Path) -> str | None:
@@ -637,7 +677,7 @@ def scan_todoist_completed_tasks_today(todoist_folder: str, today: datetime.date
     Returns:
         Formatted string with today's completed tasks grouped by project
     """
-    print(f"Today's date: {today}")
+    log: structlog.BoundLogger = structlog.get_logger()
     completed_by_project = {}
 
     todoist_files = get_todoist_files(todoist_folder)
@@ -649,17 +689,20 @@ def scan_todoist_completed_tasks_today(todoist_folder: str, today: datetime.date
         if not content:
             continue
 
-        # Check if task is completed
-        if not is_task_completed(content):
+        # Extract frontmatter including completed_date
+        title, todoist_id, project, section, completed_date_str = parse_todoist_frontmatter(content)
+        if not title or not todoist_id or not completed_date_str:
             continue
 
-        # Extract title, todoist_id, project, and section from frontmatter
-        title, todoist_id, project, section = parse_todoist_frontmatter(content)
-        if not title or not todoist_id:
+        # Check if the task's completed_date matches today
+        try:
+            task_completed_date = datetime.datetime.fromisoformat(completed_date_str).date()
+        except ValueError:
+            # Handle cases where completed_date is not in ISO format
+            log.warning(f"Invalid completed date format in {md_file}: {completed_date_str}")
             continue
 
-        # Check file modification time to see if completed today
-        if is_file_modified_today(md_file, today):
+        if task_completed_date == today:
             clean_title = clean_title_for_obsidian_link(title)
             task_entry = f"* [x] [[Todoist/{todoist_id}|{clean_title}]] ✅ {today}"
 
@@ -739,7 +782,7 @@ def scan_todoist_comments_for_today(todoist_folder: str, today: datetime.date) -
             continue
 
         # Extract title, todoist_id, project, and section from frontmatter
-        title, todoist_id, project, section = parse_todoist_frontmatter(content)
+        title, todoist_id, project, section, _ = parse_todoist_frontmatter(content)
         if not title or not todoist_id:
             continue
 

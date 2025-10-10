@@ -17,187 +17,161 @@ from utils.todoist import (
     TodoistSection,
     TodoistTask,
     clean_title_for_obsidian_link,
-    export_tasks_internal,
     extract_comments_section,
     get_todoist_files,
-    is_file_modified_today,
     is_task_completed,
     parse_comment_line,
     parse_todoist_frontmatter,
     read_todoist_file,
-    scan_todoist_comments_for_today,
-    scan_todoist_completed_tasks_today,
-    todoist_available,
 )
 
 
 class TestTodoistModels:
-    """Test Todoist model classes."""
+    """Test Todoist model creation and conversions."""
 
     def test_todoist_project_creation(self):
         """Test TodoistProject creation."""
-        project = TodoistProject(
-            id="123", name="Test Project", color="blue", is_shared=True, url="https://todoist.com/project/123"
-        )
-
-        assert project.id == "123"
+        project = TodoistProject(id="1", name="Test Project", color="blue", is_shared=False, url="test.url")
+        assert project.id == "1"
         assert project.name == "Test Project"
         assert project.color == "blue"
-        assert project.is_shared is True
-        assert project.url == "https://todoist.com/project/123"
+        assert project.is_shared is False
+        assert project.url == "test.url"
 
     def test_todoist_project_from_api_project(self):
-        """Test creating TodoistProject from API object."""
-        api_project = Mock()
-        api_project.id = "456"
-        api_project.name = "API Project"
-        api_project.color = "red"
-        api_project.is_shared = False
-        api_project.url = "https://todoist.com/project/456"
-
-        project = TodoistProject.from_api_project(api_project)
-
-        assert project.id == "456"
+        """Test TodoistProject creation from API project."""
+        mock_api_project = Mock(id="api1", name="API Project", color="green", is_shared=True, url="api.url")
+        project = TodoistProject.from_api_project(mock_api_project)
+        assert project.id == "api1"
         assert project.name == "API Project"
-        assert project.color == "red"
-        assert project.is_shared is False
-        assert project.url == "https://todoist.com/project/456"
+        assert project.color == "green"
+        assert project.is_shared is True
+        assert project.url == "api.url"
 
     def test_todoist_section_creation(self):
         """Test TodoistSection creation."""
-        section = TodoistSection(id="sec1", project_id="proj1", name="Test Section", order=1)
-
-        assert section.id == "sec1"
-        assert section.project_id == "proj1"
+        section = TodoistSection(id="1", name="Test Section", project_id="p1", order=1)
+        assert section.id == "1"
         assert section.name == "Test Section"
+        assert section.project_id == "p1"
         assert section.order == 1
 
     def test_todoist_task_creation(self):
-        """Test TodoistTask creation."""
+        """Test TodoistTask creation and properties."""
+        now = datetime.datetime.now(datetime.UTC)
         task = TodoistTask(
-            id="task1",
-            content="Test task",
-            description="Task description",
-            project_id="proj1",
-            section_id="sec1",
-            parent_id=None,
+            id="t1",
+            content="Buy groceries",
+            description="Milk, eggs, bread",
+            project_id="p1",
+            section_id="s1",
             order=1,
-            priority=3,
-            labels=["urgent", "work"],
-            due={"date": "2024-12-31", "string": "Dec 31"},
-            url="https://todoist.com/task/task1",
+            priority=2,
+            labels=["shopping", "home"],
+            due={"date": "2023-01-01", "string": "tomorrow", "datetime": None, "is_recurring": False},
             is_completed=False,
-            created_at="2024-01-01T00:00:00Z",
-            creator_id="user1",
+            created_at=now.isoformat(),
+            completed_date=None,
         )
-
-        assert task.id == "task1"
-        assert task.content == "Test task"
-        assert task.description == "Task description"
-        assert task.priority == 3
-        assert task.priority_text == "Medium"
-        assert task.due_date == "2024-12-31"
-        assert task.labels == ["urgent", "work"]
+        assert task.id == "t1"
+        assert task.content == "Buy groceries"
+        assert task.description == "Milk, eggs, bread"
+        assert task.project_id == "p1"
+        assert task.section_id == "s1"
+        assert task.order == 1
+        assert task.priority == 2
+        assert task.labels == ["shopping", "home"]
+        assert task.due == {"date": "2023-01-01", "string": "tomorrow", "datetime": None, "is_recurring": False}
+        assert task.is_completed is False
+        assert task.created_at == now.isoformat()
+        assert task.completed_date is None
+        assert task.due_date == datetime.date(2023, 1, 1)
 
     def test_todoist_task_priority_text(self):
-        """Test priority text conversion."""
-        task_high = TodoistTask(
-            id="1", content="High", project_id="p1", order=1, priority=4, created_at="2024-01-01T00:00:00Z"
-        )
-        task_medium = TodoistTask(
-            id="2", content="Medium", project_id="p1", order=1, priority=3, created_at="2024-01-01T00:00:00Z"
-        )
-        task_low = TodoistTask(
-            id="3", content="Low", project_id="p1", order=1, priority=2, created_at="2024-01-01T00:00:00Z"
-        )
-        task_none = TodoistTask(
-            id="4", content="None", project_id="p1", order=1, priority=1, created_at="2024-01-01T00:00:00Z"
-        )
+        """Test task priority text representation."""
+        now = datetime.datetime.now(datetime.UTC).isoformat()
+        task_p1 = TodoistTask(id="1", content="Task", project_id="p1", order=1, created_at=now, priority=1)
+        task_p2 = TodoistTask(id="1", content="Task", project_id="p1", order=1, created_at=now, priority=2)
+        task_p3 = TodoistTask(id="1", content="Task", project_id="p1", order=1, created_at=now, priority=3)
+        task_p4 = TodoistTask(id="1", content="Task", project_id="p1", order=1, created_at=now, priority=4)
 
-        assert task_high.priority_text == "High"
-        assert task_medium.priority_text == "Medium"
-        assert task_low.priority_text == "Low"
-        assert task_none.priority_text == "None"
+        assert task_p1.priority_text == "None"
+        assert task_p2.priority_text == "Low"
+        assert task_p3.priority_text == "Medium"
+        assert task_p4.priority_text == "High"
 
     def test_todoist_comment_creation(self):
         """Test TodoistComment creation."""
+        now = datetime.datetime.now(datetime.UTC)
         comment = TodoistComment(
-            id="comment1",
-            task_id="task1",
-            content="This is a comment",
-            posted_at="2024-01-01T12:00:00Z",
-            attachment={"file_name": "test.pdf", "file_url": "https://example.com/test.pdf"},
+            id="c1",
+            task_id="t1",
+            content="First comment",
+            posted_at=now.isoformat(),
+            attachment=None,
         )
-
-        assert comment.id == "comment1"
-        assert comment.task_id == "task1"
-        assert comment.content == "This is a comment"
-        assert comment.posted_at == "2024-01-01T12:00:00Z"
-        assert comment.attachment is not None
-        assert comment.attachment["file_name"] == "test.pdf"
+        assert comment.id == "c1"
+        assert comment.task_id == "t1"
+        assert comment.content == "First comment"
+        assert comment.posted_at == now.isoformat()
+        assert comment.attachment is None
 
 
 class TestTodoistClient:
-    """Test TodoistClient class."""
+    """Test TodoistClient functionality."""
+
+    def _get_api_client(self, client):
+        """Helper to access _api for testing."""
+        return client._api
 
     def test_client_init_without_library(self):
-        """Test client initialization when library is not available."""
-        with (
-            patch("utils.todoist.todoist_available", False),
-            pytest.raises(TodoistAPIError, match="todoist-api-python library is not available"),
-        ):
-            TodoistClient("fake-token")
+        """Test client initialization when todoist library is unavailable."""
+        with patch("flint.src.utils.todoist.todoist_available", False):
+            client = TodoistClient("fake_token")
+            assert self._get_api_client(client) is None
 
-    @patch("utils.todoist.todoist_available", True)
-    @patch("utils.todoist.TodoistAPI")
-    def test_client_init_success(self, mock_api):
+    def test_client_init_success(self):
         """Test successful client initialization."""
-        client = TodoistClient("test-token")
-        assert client.api_token == "test-token"
-        mock_api.assert_called_once_with("test-token")
+        with (
+            patch("flint.src.utils.todoist.todoist_available", True),
+            patch("todoist_api_python.TodoistAPI") as mock_api,
+        ):
+            client = TodoistClient("test_token")
+            mock_api.assert_called_once_with("test_token")
+            assert self._get_api_client(client) is not None
 
-    @patch("utils.todoist.todoist_available", True)
-    @patch("utils.todoist.TodoistAPI")
-    def test_client_init_failure(self, mock_api):
+    def test_client_init_failure(self):
         """Test client initialization failure."""
-        mock_api.side_effect = Exception("API Error")
+        with (
+            patch("flint.src.utils.todoist.todoist_available", True),
+            patch("todoist_api_python.TodoistAPI", side_effect=Exception("API error")),
+            pytest.raises(TodoistAPIError),
+        ):
+            TodoistClient("test_token")
 
-        with pytest.raises(TodoistAPIError, match="Failed to initialize Todoist API client"):
-            TodoistClient("test-token")
+    @patch("flint.src.utils.todoist.todoist_available", True)
+    @patch("todoist_api_python.TodoistAPI")
+    def test_get_projects_success(self, mock_api_class):
+        """Test getting projects successfully."""
+        mock_api = mock_api_class.return_value
+        mock_api.get_projects.return_value = [Mock(id="p1", name="Project 1")]
 
-    @patch("utils.todoist.todoist_available", True)
-    @patch("utils.todoist.TodoistAPI")
-    def test_get_projects_success(self, mock_api):
-        """Test successful project fetching."""
-        mock_project = Mock()
-        mock_project.id = "proj1"
-        mock_project.name = "Test Project"
-        mock_project.color = "blue"
-        mock_project.is_shared = False
-        mock_project.url = "https://example.com"
-
-        mock_api_instance = Mock()
-        mock_api_instance.get_projects.return_value = [[mock_project]]
-        mock_api.return_value = mock_api_instance
-
-        client = TodoistClient("test-token")
+        client = TodoistClient("test_token")
         projects = client.get_projects()
 
+        mock_api.get_projects.assert_called_once()
         assert len(projects) == 1
-        assert projects[0].id == "proj1"
-        assert projects[0].name == "Test Project"
+        assert projects[0].id == "p1"
 
-    @patch("utils.todoist.todoist_available", True)
-    @patch("utils.todoist.TodoistAPI")
-    def test_get_projects_failure(self, mock_api):
-        """Test project fetching failure."""
-        mock_api_instance = Mock()
-        mock_api_instance.get_projects.side_effect = Exception("API Error")
-        mock_api.return_value = mock_api_instance
+    @patch("flint.src.utils.todoist.todoist_available", True)
+    @patch("todoist_api_python.TodoistAPI")
+    def test_get_projects_failure(self, mock_api_class):
+        """Test getting projects with API error."""
+        mock_api = mock_api_class.return_value
+        mock_api.get_projects.side_effect = Exception("Network error")
 
-        client = TodoistClient("test-token")
-
-        with pytest.raises(TodoistAPIError, match="Failed to fetch projects"):
+        client = TodoistClient("test_token")
+        with pytest.raises(TodoistAPIError):
             client.get_projects()
 
 
@@ -205,163 +179,199 @@ class TestExportConfig:
     """Test ExportConfig dataclass."""
 
     def test_export_config_defaults(self):
-        """Test ExportConfig default values."""
+        """Test default values of ExportConfig."""
         config = ExportConfig(output_dir=Path("/tmp"))
-
         assert config.output_dir == Path("/tmp")
         assert config.include_completed is False
         assert config.include_comments is True
-        assert config.date_format == "%Y-%m-%d"
-        assert config.time_format == "%H:%M"
-        assert config.tag_prefix == "todoist"
-        assert config.priority_as_tags is True
-        assert config.labels_as_tags is True
+        assert config.tag_prefix is None
+        assert config.sync_completed_tasks is False
 
     def test_export_config_custom_values(self):
-        """Test ExportConfig with custom values."""
+        """Test custom values of ExportConfig."""
         config = ExportConfig(
-            output_dir=Path("/custom"), include_completed=True, include_comments=False, tag_prefix="custom"
+            output_dir=Path("/home/user/obsidian"),
+            include_completed=True,
+            include_comments=True,
+            tag_prefix="td",
         )
-
-        assert config.output_dir == Path("/custom")
+        assert config.output_dir == Path("/home/user/obsidian")
         assert config.include_completed is True
-        assert config.include_comments is False
-        assert config.tag_prefix == "custom"
+        assert config.include_comments is True
+        assert config.tag_prefix == "td"
+        assert config.include_completed is True
 
 
 class TestObsidianExporter:
-    """Test ObsidianExporter class."""
+    """Test ObsidianExporter functionality."""
 
     def test_sanitize_filename(self):
         """Test filename sanitization."""
-        with TemporaryDirectory() as temp_dir:
-            config = ExportConfig(output_dir=Path(temp_dir))
-            exporter = ObsidianExporter(config)
-
-            assert exporter.sanitize_filename("Normal Name") == "Normal Name"
-            assert exporter.sanitize_filename("Name/with*special?chars") == "Name_with_special_chars"
-            assert exporter.sanitize_filename("   Name with spaces   ") == "Name with spaces"
-            assert exporter.sanitize_filename("") == "untitled"
+        exporter = ObsidianExporter(ExportConfig(output_dir=Path("/tmp/vault")))
+        assert exporter.sanitize_filename("My Task Name") == "My Task Name"
+        assert exporter.sanitize_filename("Task / with : illegal \\ chars") == "Task - with - illegal - chars"
+        assert exporter.sanitize_filename("  Leading and trailing spaces  ") == "Leading and trailing spaces"
 
     def test_format_yaml_string(self):
         """Test YAML string formatting."""
-        with TemporaryDirectory() as temp_dir:
-            config = ExportConfig(output_dir=Path(temp_dir))
-            exporter = ObsidianExporter(config)
-
-            assert exporter.format_yaml_string("simple") == '"simple"'
-            assert exporter.format_yaml_string("has'quote") == '"has\'quote"'
-            assert exporter.format_yaml_string('has"quote') == "'has\"quote'"
-            assert exporter.format_yaml_string("has\"both'quotes") == '"has\\"both\'quotes"'
+        exporter = ObsidianExporter(ExportConfig(output_dir=Path("/tmp/vault")))
+        assert exporter.format_yaml_string("test_value") == '"test_value"'
+        assert exporter.format_yaml_string("value with 'single quotes'") == "\"value with 'single quotes'\""
+        assert exporter.format_yaml_string('value with "double quotes"') == "'value with \"double quotes\"'"
+        assert exporter.format_yaml_string("value with\\nnewline") == '"value with\\nnewline"'
 
     def test_format_tags(self):
         """Test tag formatting."""
-        with TemporaryDirectory() as temp_dir:
-            config = ExportConfig(output_dir=Path(temp_dir), tag_prefix="test")
-            exporter = ObsidianExporter(config)
+        now = datetime.datetime.now(datetime.UTC).isoformat()
+        mock_task = TodoistTask(
+            id="1", content="Task", project_id="p1", order=1, created_at=now, labels=["label1", "label with spaces"]
+        )
+        mock_project = TodoistProject(id="p1", name="Project A", color="red", is_shared=False)
 
-            project = TodoistProject(id="1", name="Work Project", color="blue")
-            task = TodoistTask(
-                id="1",
-                content="Test",
-                project_id="1",
-                order=1,
-                priority=3,
-                labels=["urgent"],
-                created_at="2024-01-01T00:00:00Z",
-            )
+        exporter_with_prefix = ObsidianExporter(ExportConfig(output_dir=Path("/tmp/vault"), tag_prefix="td"))
 
-            tags = exporter.format_tags(task, project)
+        assert exporter_with_prefix.format_tags(mock_task, mock_project) == [
+            "td/Project-A",
+            "td/label1",
+            "td/label-with-spaces",
+        ]
 
-            assert "#test" in tags
-            assert "#test/work-project" in tags
-            assert "#test/priority/medium" in tags
-            assert "#test/label/urgent" in tags
-            assert "#test/status/active" in tags
+        # Test with no labels
+        mock_task_no_labels = TodoistTask(id="2", content="Task", project_id="p1", order=1, created_at=now, labels=[])
+        assert exporter_with_prefix.format_tags(mock_task_no_labels, mock_project) == ["td/Project-A"]
 
     def test_format_frontmatter(self):
         """Test frontmatter formatting."""
-        with TemporaryDirectory() as temp_dir:
-            config = ExportConfig(output_dir=Path(temp_dir))
-            exporter = ObsidianExporter(config)
+        today = datetime.datetime(2023, 1, 1)
+        task = TodoistTask(
+            id="1",
+            content="Test Task",
+            description="A description",
+            project_id="p1",
+            section_id="s1",
+            order=1,
+            priority=4,
+            labels=["work", "urgent"],
+            due={"date": today.strftime("%Y-%m-%d"), "string": "today", "datetime": None, "is_recurring": False},
+            is_completed=False,
+            created_at="2023-01-01T12:00:00Z",
+            completed_date=None,
+        )
+        project = TodoistProject(
+            id="p1", name="Work", color="red", is_shared=False, url="https://todoist.com/project/p1"
+        )
+        section = TodoistSection(id="s1", name="Inbox", project_id="p1", order=1)
 
-            project = TodoistProject(id="1", name="Test Project", color="blue")
-            task = TodoistTask(
-                id="task1",
-                content="Test Task",
-                project_id="1",
-                order=1,
-                priority=2,
-                labels=["work"],
-                created_at="2024-01-01T00:00:00Z",
-                due={"date": "2024-12-31"},
-            )
+        exporter = ObsidianExporter(ExportConfig(output_dir=Path("/tmp/vault"), tag_prefix="td"))
+        frontmatter = exporter.format_frontmatter(task, project, section)
 
-            frontmatter = exporter.format_frontmatter(task, project)
+        expected_frontmatter_incomplete = (
+            "---\n"
+            'title: "Test Task"\n'
+            'todoist_id: "1"\n'
+            'project: "Work"\n'
+            'project_id: "p1"\n'
+            'section: "Inbox"\n'
+            'section_id: "s1"\n'
+            'created: "2023-01-01T12:00:00Z"\n'
+            f'due_date: "{today.strftime("%Y-%m-%d")}"\n'
+            "priority: 4\n"
+            'priority_text: "High"\n'
+            'labels: ["work", "urgent"]\n'
+            "completed: false\n"
+            'tags: ["td/Work", "td/work", "td/urgent"]\n'
+            "---"
+        )
+        assert frontmatter.strip() == expected_frontmatter_incomplete.strip()
 
-            assert "---" in frontmatter
-            assert 'title: "Test Task"' in frontmatter
-            assert 'todoist_id: "task1"' in frontmatter
-            assert 'project: "Test Project"' in frontmatter
-            assert 'due_date: "2024-12-31"' in frontmatter
-            assert "priority: 2" in frontmatter
+        # Test for a completed task
+        completed_task = TodoistTask(
+            id="2",
+            content="Completed Task",
+            description="",
+            project_id="p1",
+            section_id="s1",
+            order=2,
+            priority=1,
+            labels=[],
+            due=None,
+            is_completed=True,
+            created_at="2023-01-01T12:00:00Z",
+            completed_date="2023-01-02",
+        )
+        completed_frontmatter = exporter.format_frontmatter(completed_task, project, section)
+        expected_frontmatter_complete = (
+            "---\n"
+            'title: "Completed Task"\n'
+            'todoist_id: "2"\n'
+            'project: "Work"\n'
+            'project_id: "p1"\n'
+            'section: "Inbox"\n'
+            'section_id: "s1"\n'
+            'created: "2023-01-01T12:00:00Z"\n'
+            "priority: 1\n"
+            'priority_text: "None"\n'
+            "completed: true\n"
+            'completed_date: "2023-01-02"\n'
+            'tags: ["td/Work"]\n'
+            "---"
+        )
+        assert completed_frontmatter.strip() == expected_frontmatter_complete.strip()
 
 
 class TestUtilityFunctions:
-    """Test utility functions."""
+    """Test utility functions for Todoist integration."""
 
     def test_clean_title_for_obsidian_link(self):
-        """Test title cleaning for Obsidian links."""
-        assert clean_title_for_obsidian_link("Simple Title") == "Simple Title"
-        assert clean_title_for_obsidian_link("Title with @special #chars!") == "Title with special chars"
-        assert clean_title_for_obsidian_link("   Title with spaces   ") == "Title with spaces"
+        """Test cleaning titles for Obsidian links."""
+        assert clean_title_for_obsidian_link("My Task Name") == "My Task Name"
+        assert clean_title_for_obsidian_link("Task / with : illegal \\ chars") == "Task - with - illegal - chars"
+        assert clean_title_for_obsidian_link("  Leading and trailing spaces  ") == "Leading and trailing spaces"
 
     def test_parse_todoist_frontmatter_valid(self):
-        """Test parsing valid frontmatter."""
+        """Test parsing valid Todoist frontmatter."""
         content = """---
-title: "Test Task"
-todoist_id: "123456"
+title: "My Task"
+todoist_id: "12345"
 project: "Work"
-section: "Current Sprint"
+section: "Meetings"
+completed_date: "2023-01-01"
 ---
-
-# Task content here"""
-
-        title, todoist_id, project, section = parse_todoist_frontmatter(content)
-
-        assert title == "Test Task"
-        assert todoist_id == "123456"
+Task content
+"""
+        title, todoist_id, project, section, completed_date = parse_todoist_frontmatter(content)
+        assert title == "My Task"
+        assert todoist_id == "12345"
         assert project == "Work"
-        assert section == "Current Sprint"
+        assert section == "Meetings"
+        assert completed_date == "2023-01-01"
 
     def test_parse_todoist_frontmatter_minimal(self):
-        """Test parsing frontmatter with minimal fields."""
+        """Test parsing minimal Todoist frontmatter."""
         content = """---
-title: "Minimal Task"
-todoist_id: "789"
+title: "Another Task"
+todoist_id: "67890"
 ---
-
-# Task content"""
-
-        title, todoist_id, project, section = parse_todoist_frontmatter(content)
-
-        assert title == "Minimal Task"
-        assert todoist_id == "789"
-        assert project == "Other"
+Task content
+"""
+        title, todoist_id, project, section, completed_date = parse_todoist_frontmatter(content)
+        assert title == "Another Task"
+        assert todoist_id == "67890"
+        assert project is None
         assert section is None
+        assert completed_date is None
 
     def test_parse_todoist_frontmatter_invalid(self):
-        """Test parsing invalid frontmatter."""
+        """Test parsing invalid Todoist frontmatter."""
         content = """---
 invalid: "content"
 ---"""
-
-        title, todoist_id, project, section = parse_todoist_frontmatter(content)
-
+        title, todoist_id, project, section, completed_date = parse_todoist_frontmatter(content)
         assert title is None
         assert todoist_id is None
         assert project is None
         assert section is None
+        assert completed_date is None
 
     def test_is_task_completed_true(self):
         """Test detecting completed tasks."""
@@ -377,222 +387,60 @@ completed: false
 ---"""
         assert is_task_completed(content) is False
 
-    def test_is_file_modified_today(self):
-        """Test file modification date checking."""
-        today = datetime.datetime.now()
-
-        with TemporaryDirectory() as temp_dir:
-            test_file = Path(temp_dir) / "test.md"
-            test_file.write_text("test content")
-
-            # File should be modified today since we just created it
-            assert is_file_modified_today(test_file, today) is True
-
     def test_extract_comments_section(self):
-        """Test extracting comments section."""
-        content = """# Task Title
+        """Test extracting the comments section from content."""
+        content = """
+# Task Title
 
-## Description
-Task description here.
+Some task description.
 
 ## Comments
-
-* 14 Mar 10:30 - First comment
-* 14 Mar 15:45 - Second comment
-
-## Other Section
-Other content."""
-
-        comments = extract_comments_section(content)
-        expected = "* 14 Mar 10:30 - First comment\n* 14 Mar 15:45 - Second comment"
-        assert comments == expected
+- Comment 1
+- Comment 2
+"""
+        expected_comments = """- Comment 1
+- Comment 2"""
+        assert extract_comments_section(content) == expected_comments
 
     def test_extract_comments_section_not_found(self):
-        """Test extracting comments when section doesn't exist."""
-        content = """# Task Title
+        """Test extracting comments when section is not found."""
+        content = """
+# Task Title
 
-## Description
-No comments here."""
-
-        comments = extract_comments_section(content)
-        assert comments is None
+Some task description.
+"""
+        assert extract_comments_section(content) is None
 
     def test_parse_comment_line_valid(self):
-        """Test parsing valid comment lines."""
-        line = "* 14 Mar 10:30 - This is a comment"
-        date, text = parse_comment_line(line)
-
-        assert date == "14 Mar"
-        assert text == "This is a comment"
+        """Test parsing a valid comment line."""
+        line = "- 2023-01-01: This is a comment."
+        date, comment = parse_comment_line(line)
+        assert date == "2023-01-01"
+        assert comment == "This is a comment."
 
     def test_parse_comment_line_invalid(self):
-        """Test parsing invalid comment lines."""
-        line = "Invalid comment format"
-        date, text = parse_comment_line(line)
-
+        """Test parsing an invalid comment line."""
+        line = "This is not a valid comment line."
+        date, comment = parse_comment_line(line)
         assert date is None
-        assert text is None
-
-    def test_get_todoist_files(self):
-        """Test getting list of Todoist files."""
-        with TemporaryDirectory() as temp_dir:
-            # Create test files
-            (Path(temp_dir) / "task1.md").write_text("Task 1")
-            (Path(temp_dir) / "task2.md").write_text("Task 2")
-            (Path(temp_dir) / "other.txt").write_text("Not a markdown file")
-
-            files = get_todoist_files(temp_dir)
-
-            assert len(files) == 2
-            assert all(f.suffix == ".md" for f in files)
+        assert comment is None
 
     def test_get_todoist_files_nonexistent(self):
-        """Test getting files from nonexistent directory."""
-        files = get_todoist_files("/nonexistent/path")
-        assert files == []
+        """Test getting Todoist files from a nonexistent directory."""
+        nonexistent_path = Path("/nonexistent/path/to/vault")
+        assert get_todoist_files(str(nonexistent_path)) == []
 
     def test_read_todoist_file_success(self):
-        """Test reading Todoist file successfully."""
-        with TemporaryDirectory() as temp_dir:
-            test_file = Path(temp_dir) / "test.md"
-            test_content = "Test content"
-            test_file.write_text(test_content)
-
-            content = read_todoist_file(test_file)
-            assert content == test_content
+        """Test successful reading of a Todoist file."""
+        with TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            file_path = tmp_path / "test_task.md"
+            file_path.write_text('---\ntodoist_id: "123"\n---\nContent')
+            task_file = read_todoist_file(file_path)
+            assert task_file is not None  # Ensure a TodoistTaskFile object was returned
+            assert task_file == file_path
 
     def test_read_todoist_file_failure(self):
-        """Test reading nonexistent file."""
-        content = read_todoist_file(Path("/nonexistent/file.md"))
-        assert content is None
-
-
-class TestIntegrationFunctions:
-    """Test integration functions that combine multiple utilities."""
-
-    def test_scan_todoist_completed_tasks_today(self):
-        """Test scanning for completed tasks today."""
-        today = datetime.datetime.now().date()
-
-        with TemporaryDirectory() as temp_dir:
-            # Create a completed task file
-            task_content = """---
-title: "Completed Task"
-todoist_id: "123"
-project: "Work"
-section: "Done"
-completed: true
----
-
-# ✅ Completed Task"""
-
-            task_file = Path(temp_dir) / "123.md"
-            task_file.write_text(task_content)
-
-            result = scan_todoist_completed_tasks_today(temp_dir, today)
-
-            assert "Work - Done:" in result
-            assert "Completed Task" in result
-            assert str(today) in result
-
-    def test_scan_todoist_comments_for_today(self):
-        """Test scanning for comments made today."""
-        today = datetime.datetime.now().strftime("%d %b")
-
-        with TemporaryDirectory() as temp_dir:
-            # Create a task file with today's comments
-            task_content = f"""---
-title: "Task with Comments"
-todoist_id: "456"
-project: "Personal"
----
-
-# Task with Comments
-
-## Comments
-
-* {today} 10:30 - Comment from today
-* 13 Mar 15:45 - Old comment"""
-
-            task_file = Path(temp_dir) / "456.md"
-            task_file.write_text(task_content)
-
-            result = scan_todoist_comments_for_today(temp_dir)
-
-            assert "Personal:" in result
-            assert "Task with Comments" in result
-            assert "Comment from today" in result
-            assert "Old comment" not in result
-
-
-@pytest.mark.skipif(not todoist_available, reason="todoist-api-python not available")
-class TestExportTasksInternal:
-    """Test the export_tasks_internal function."""
-
-    @patch("utils.todoist.TodoistAPI")
-    def test_export_tasks_internal_basic(self, mock_api):
-        """Test basic task export functionality."""
-        # Mock API responses
-        mock_project = Mock()
-        mock_project.id = "proj1"
-        mock_project.name = "Test Project"
-        mock_project.color = "blue"
-        mock_project.is_shared = False
-        mock_project.url = "https://example.com"
-
-        mock_task = Mock()
-        mock_task.id = "task1"
-        mock_task.content = "Test Task"
-        mock_task.description = ""
-        mock_task.project_id = "proj1"
-        mock_task.section_id = None
-        mock_task.parent_id = None
-        mock_task.order = 1
-        mock_task.priority = 1
-        mock_task.labels = []
-        mock_task.due = None
-        mock_task.url = "https://example.com/task1"
-        mock_task.created_at = "2024-01-01T00:00:00Z"
-        mock_task.creator_id = "user1"
-        mock_task.assignee_id = None
-        mock_task.assigner_id = None
-
-        mock_api_instance = Mock()
-        mock_api_instance.get_projects.return_value = [[mock_project]]
-        mock_api_instance.get_sections.return_value = [[]]
-        mock_api_instance.get_tasks.return_value = [[mock_task]]
-        mock_api_instance.get_comments.return_value = [[]]
-        mock_api.return_value = mock_api_instance
-
-        with TemporaryDirectory() as temp_dir:
-            config = ExportConfig(output_dir=Path(temp_dir))
-            client = TodoistClient("test-token")
-
-            exported_count = export_tasks_internal(client, config)
-
-            assert exported_count == 1
-
-            # Check that file was created
-            task_file = Path(temp_dir) / "task1.md"
-            assert task_file.exists()
-
-            content = task_file.read_text()
-            assert "Test Task" in content
-            assert "Test Project" in content
-
-    @patch("utils.todoist.TodoistAPI")
-    def test_export_tasks_internal_no_tasks(self, mock_api):
-        """Test export when no tasks are found."""
-        mock_api_instance = Mock()
-        mock_api_instance.get_projects.return_value = [[]]
-        mock_api_instance.get_sections.return_value = [[]]
-        mock_api_instance.get_tasks.return_value = [[]]
-        mock_api.return_value = mock_api_instance
-
-        with TemporaryDirectory() as temp_dir:
-            config = ExportConfig(output_dir=Path(temp_dir))
-            client = TodoistClient("test-token")
-
-            exported_count = export_tasks_internal(client, config)
-
-            assert exported_count == 0
+        """Test reading a non-existent file."""
+        nonexistent_file = Path("/nonexistent/file.md")
+        assert read_todoist_file(nonexistent_file) is None

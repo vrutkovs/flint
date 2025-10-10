@@ -105,7 +105,6 @@ settings: Settings = Settings(
     logger=log,
     model_name=MODEL_NAME,
     chat_id=CHAT_ID,
-    tz=TZ,
     mcp_config_path=MCP_CONFIG_PATH,
     mcp_calendar_name=MCP_CALENDAR_NAME or "",
     mcp_todoist_name=MCP_TODOIST_NAME or "",

@@ -67,7 +67,7 @@ async def sync_todoist_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
             None,  # project_id
             None,  # project_name
             None,  # filter_expr
-            False,  # include_completed
+            True,  # include_completed
         )
 
         settings.logger.info(f"Todoist sync completed: {exported_count} tasks exported")
