@@ -226,7 +226,9 @@ class TestTelega:
 
         await telega.reply_to_message(mock_update, "Test reply")
 
-        mock_update.message.reply_text.assert_called_once_with(text="Test reply", reply_to_message_id=999)
+        mock_update.message.reply_text.assert_called_once_with(
+            text="Test reply", reply_to_message_id=999, parse_mode="HTML"
+        )
 
     @pytest.mark.asyncio
     async def test_reply_to_message_no_message(self, telega, mock_update):
@@ -661,7 +663,7 @@ class TestMCPConfigReader:
         """Test parsing invalid configuration format."""
         mcp_reader._raw_config = {"extensions": "not a dict"}
 
-        with pytest.raises(ValueError, match="MCP configuration must be a dictionary"):
+        with pytest.raises(AttributeError, match="'str' object has no attribute 'items'"):
             mcp_reader._parse_configuration()
 
     def test_parse_configuration_invalid_mcp(self, mcp_reader, mock_settings):

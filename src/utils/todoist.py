@@ -583,7 +583,7 @@ def parse_todoist_frontmatter(content: str) -> tuple[str | None, str | None, str
     todoist_id_match = re.search(r'^todoist_id: "(.+)"$', content, re.MULTILINE)
     project_match = re.search(r'^project: "(.+)"$', content, re.MULTILINE)
     section_match = re.search(r'^section: "(.+)"$', content, re.MULTILINE)
-    completed_match = re.search(r'^completed: "(.+)"$', content, re.MULTILINE)
+    completed_match = re.search(r'^completed_date: "(.+)"$', content, re.MULTILINE)
 
     if not title_match or not todoist_id_match:
         return None, None, None, None, None

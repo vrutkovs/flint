@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-import pytz
 import structlog
 from google import genai
 
@@ -32,7 +31,12 @@ class TestSettings:
             "genai_client": mock_genai_client,
             "logger": mock_logger,
             "chat_id": "123456789",
-            "tz": "UTC",
+            "daily_note_folder": None,
+            "todoist_notes_folder": None,
+            "rag_embedding_model": None,
+            "rag_location": None,
+            "rag_vector_storage": None,
+            "google_api_key": None,
             "mcp_config_path": "/path/to/config.yaml",
             "mcp_calendar_name": "calendar_mcp",
             "mcp_weather_name": "weather_mcp",
@@ -55,6 +59,8 @@ class TestSettings:
         assert settings.agenda_mcp_todoist_name == basic_settings_params["mcp_todoist_name"]
         assert settings.user_filter == []
         assert settings.qa_chain is None
+        assert settings.daily_note_folder is None
+        assert settings.todoist_notes_folder is None
 
     def test_settings_with_user_filter(self, basic_settings_params):
         """Test Settings initialization with user filter."""
@@ -76,13 +82,6 @@ class TestSettings:
 
         assert settings.model_name == "gemini-pro"
         assert repr(settings) == "Settings(model_name='gemini-pro')"
-
-    def test_settings_invalid_timezone(self, basic_settings_params):
-        """Test Settings initialization with invalid timezone."""
-        basic_settings_params["tz"] = "Invalid/Timezone"
-
-        with pytest.raises(pytz.exceptions.UnknownTimeZoneError):
-            Settings(**basic_settings_params)
 
     def test_system_instructions_processing(self, basic_settings_params):
         """Test that system instructions are properly split and configured."""
@@ -200,8 +199,15 @@ class TestSettings:
             "logger",
             "model_name",
             "chat_id",
-            "timezone",
             "mcp_config_path",
+            "agenda_mcp_calendar_name",
+            "agenda_mcp_weather_name",
+            "agenda_mcp_todoist_name",
+            "user_filter",
+            "genconfig",
+            "qa_chain",
+            "daily_note_folder",
+            "todoist_notes_folder",
             "agenda_mcp_calendar_name",
             "agenda_mcp_weather_name",
             "agenda_mcp_todoist_name",
@@ -260,12 +266,17 @@ class TestSettings:
             "genai_client": mock_genai_client,
             "logger": mock_logger,
             "chat_id": "123456789",
-            "tz": "UTC",
             "mcp_config_path": "/path/to/config.yaml",
             "mcp_calendar_name": "calendar_mcp",
             "mcp_weather_name": "weather_mcp",
             "mcp_todoist_name": "todoist_mcp",
             "system_instructions": "You are a helpful assistant.",
+            "daily_note_folder": None,
+            "todoist_notes_folder": None,
+            "rag_embedding_model": None,
+            "rag_location": None,
+            "rag_vector_storage": None,
+            "google_api_key": None,
             # model_name not specified, should use default
         }
 
