@@ -1,6 +1,7 @@
 import datetime
 import os
 import sys
+import zoneinfo
 from pathlib import Path
 from typing import Final
 
@@ -83,8 +84,8 @@ RAG_VECTOR_STORAGE: str | None = os.environ.get("RAG_VECTOR_STORAGE")
 
 SCHEDULED_AGENDA_TIME: str | None = os.environ.get("SCHEDULED_AGENDA_TIME")
 SCHEDULED_DIARY_TIME: str | None = os.environ.get("SCHEDULED_DIARY_TIME", "23:59")
-GOOGLE_OAUTH_CREDENTIALS: str | None = os.environ.get("GOOGLE_OAUTH_CREDENTIALS")
 TZ: str = os.getenv("TZ", "UTC")
+GOOGLE_OAUTH_CREDENTIALS: str | None = os.environ.get("GOOGLE_OAUTH_CREDENTIALS")
 USER_FILTER: list[str] = os.environ.get("USER_FILTER", "").split(",")
 
 # Configure structured logging
@@ -190,7 +191,8 @@ if SCHEDULED_DIARY_TIME and settings.daily_note_folder:
     diary_hour: int
     diary_minute: int
     diary_hour, diary_minute = map(int, SCHEDULED_DIARY_TIME.split(":"))
-    diary_schedule_time: datetime.time = datetime.time(hour=diary_hour, minute=diary_minute)
+    tzinfo = zoneinfo.ZoneInfo(TZ)
+    diary_schedule_time: datetime.time = datetime.time(hour=diary_hour, minute=diary_minute, tzinfo=tzinfo)
     diary_data: DiaryData = DiaryData(settings=settings, genai_client=genai_client)
 
     job_queue.run_daily(
