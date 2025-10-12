@@ -92,7 +92,8 @@ def write_obsidian_file(file_path: Path, content: str) -> bool:
         )
         diff_str = "".join(diff)
         if diff_str:  # Only log if there's an actual diff
-            logger.info("Obsidian file content diff before writing", file_path=file_path, diff=diff_str)
+            logger.info("Obsidian file content diff before writing", file_path=file_path)
+            logger.info(diff_str)
 
     try:
         with open(file_path, "w", encoding="utf-8") as file:
