@@ -162,7 +162,8 @@ if SCHEDULED_AGENDA_TIME and MCP_CALENDAR_NAME and MCP_WEATHER_NAME:
     hour: int
     minute: int
     hour, minute = map(int, SCHEDULED_AGENDA_TIME.split(":"))
-    schedule_time: datetime.time = datetime.time(hour=hour, minute=minute)
+    tzinfo = zoneinfo.ZoneInfo(TZ)
+    schedule_time: datetime.time = datetime.time(hour=hour, minute=minute, tzinfo=tzinfo)
     scheduleData: ScheduleData = ScheduleData(settings=settings, genai_client=genai_client)
 
     job_queue.run_daily(
