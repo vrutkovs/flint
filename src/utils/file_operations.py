@@ -6,51 +6,7 @@ from typing import Any
 
 import structlog
 
-
-def read_file_safely(file_path: Path) -> str | None:
-    """Read file content with error handling and logging.
-
-    Args:
-        file_path: Path to the file to read
-
-    Returns:
-        File content as string or None if reading fails
-    """
-    try:
-        with open(file_path, encoding="utf-8") as file:
-            return file.read()
-    except FileNotFoundError:
-        structlog.get_logger().debug(f"File not found: {file_path}")
-        return None
-    except PermissionError:
-        structlog.get_logger().error(f"Permission denied reading file: {file_path}")
-        return None
-    except Exception as e:
-        structlog.get_logger().error(f"Error reading file {file_path}: {e}")
-        return None
-
-
-def write_file_safely(file_path: Path, content: str) -> bool:
-    """Write content to file with error handling and logging.
-
-    Args:
-        file_path: Path to the file to write
-        content: Content to write to the file
-
-    Returns:
-        True if write was successful, False otherwise
-    """
-    try:
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(content)
-        structlog.get_logger().debug(f"Successfully wrote to file: {file_path}")
-        return True
-    except PermissionError:
-        structlog.get_logger().error(f"Permission denied writing to file: {file_path}")
-        return False
-    except Exception as e:
-        structlog.get_logger().error(f"Error writing to file {file_path}: {e}")
-        return False
+from utils.obsidian import read_obsidian_file
 
 
 def ensure_directory_exists(directory_path: Path | str) -> bool:
@@ -128,11 +84,15 @@ def backup_file(file_path: Path, backup_suffix: str = ".backup") -> bool:
     backup_path = file_path.with_suffix(f"{file_path.suffix}{backup_suffix}")
 
     try:
-        content = read_file_safely(file_path)
+        content = read_obsidian_file(file_path)
         if content is None:
+            # read_obsidian_file already logs the error
             return False
 
-        return write_file_safely(backup_path, content)
+        with open(backup_path, "w", encoding="utf-8") as file:
+            file.write(content)
+        structlog.get_logger().debug(f"Successfully wrote backup to {backup_path}")
+        return True
     except Exception as e:
         structlog.get_logger().error(f"Error creating backup of {file_path}: {e}")
         return False

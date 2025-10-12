@@ -10,6 +10,8 @@ from typing import Any, NamedTuple
 import structlog
 from pydantic import BaseModel, Field
 
+from utils.obsidian import write_obsidian_file
+
 try:
     from todoist_api_python.api import TodoistAPI
 
@@ -467,8 +469,7 @@ class ObsidianExporter:
         new_content = self.format_task_content(task, project, comments, child_tasks, section)
         final_content = new_content + existing_user_content
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(final_content)
+        write_obsidian_file(output_path, final_content)
 
         return output_path
 
@@ -480,6 +481,7 @@ def export_tasks_internal(
     project_name: str | None = None,
     filter_expr: str | None = None,
     include_completed: bool = False,
+    target_date: datetime.date | None = None,
 ) -> int:
     """Internal function to export tasks."""
     # Get projects
@@ -498,19 +500,58 @@ def export_tasks_internal(
             raise TodoistAPIError(f"Project '{project_name}' not found")
         target_project_id = matching_projects[0].id
 
-    # Get tasks
-    tasks = client.get_tasks(project_id=target_project_id, filter_expr=filter_expr)
+    tasks: list[TodoistTask] = []
 
-    # Fetch completed tasks for today if include_completed is True
-    if include_completed:
-        today = datetime.datetime.now()
-        completed_tasks_today = client.get_completed_tasks_by_completion_date(today)
+    if target_date:
+        # If a target_date is provided, we fetch completed tasks for that specific date.
+        # This implicitly sets include_completed for this path.
+        # Convert target_date (datetime.date) to datetime.datetime for the API call
+        completed_tasks_on_date = client.get_completed_tasks_by_completion_date(
+            datetime.datetime.combine(target_date, datetime.time.min)
+        )
 
-        # Filter completed tasks by project_id if specified
-        if target_project_id:
-            completed_tasks_today = [t for t in completed_tasks_today if t.project_id == target_project_id]
+        # Apply project and filter_expr to these completed tasks if specified
+        filtered_tasks = []
+        for task in completed_tasks_on_date:
+            if target_project_id and task.project_id != target_project_id:
+                continue
+            # Note: Applying filter_expr to completed tasks is complex with Todoist API.
+            # The get_completed_tasks_by_completion_date doesn't take filter_expr.
+            # For now, we'll only apply project filtering.
+            # If advanced filtering is needed on completed tasks, a client-side
+            # filtering based on filter_expr might be necessary, but that's
+            # beyond the scope of a simple string expression.
+            filtered_tasks.append(task)
+        tasks.extend(filtered_tasks)
+    else:
+        # If no target_date, proceed with standard task fetching.
+        # Construct the final filter expression for Todoist API
+        combined_filter_expr = filter_expr
+        # The 'due' date filter was previously here, but it's for active tasks.
+        # Since --date is for *completion* date, we only use it in the block above.
 
-        tasks.extend(completed_tasks_today)
+        # Get tasks
+        tasks = client.get_tasks(project_id=target_project_id, filter_expr=combined_filter_expr)
+
+        # Fetch completed tasks if include_completed is True and no target_date
+        if include_completed:
+            # Note: This path is for general 'include all completed tasks' not date-specific.
+            # If target_date is used, it takes precedence for completed tasks.
+            # Fetch completed tasks for today (datetime.datetime)
+            completed_tasks_general = client.get_completed_tasks_by_completion_date(datetime.datetime.now())
+
+            # Filter completed tasks by project_id if specified
+            if target_project_id:
+                completed_tasks_general = [t for t in completed_tasks_general if t.project_id == target_project_id]
+
+            # Filter by filter_expr if provided - client-side filtering needed here
+            if filter_expr:
+                # This is a simplified client-side filter. A more robust solution
+                # would involve parsing the Todoist filter expression.
+                lower_filter_expr = filter_expr.lower()
+                completed_tasks_general = [t for t in completed_tasks_general if lower_filter_expr in t.content.lower()]
+
+            tasks.extend(completed_tasks_general)
 
     if not tasks:
         return 0
@@ -541,7 +582,11 @@ def export_tasks_internal(
         if not project:
             continue
 
-        if task.is_completed and not include_completed:
+        # If the task is completed and the export configuration explicitly
+        # states NOT to include completed tasks, then skip it.
+        # This allows fetching completed tasks (e.g., via --date) but still
+        # respecting the general export configuration for completed tasks.
+        if task.is_completed and not export_config.include_completed:
             continue
 
         # Get child tasks for this parent

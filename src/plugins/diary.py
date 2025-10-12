@@ -10,8 +10,8 @@ from telegram.ext import ContextTypes
 
 from plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration
 from telega.settings import Settings
-from utils.file_operations import ensure_directory_exists, read_file_safely, write_file_safely
-from utils.obsidian import replace_diary_section
+from utils.file_operations import ensure_directory_exists
+from utils.obsidian import read_obsidian_file, replace_diary_section, write_obsidian_file
 from utils.todoist import scan_todoist_comments_for_today, scan_todoist_completed_tasks_today
 
 
@@ -192,7 +192,7 @@ def update_daily_note_file(file_path: Path, diary_entry: str, logger: structlog.
     # Read existing file content if it exists
     existing_content = ""
     if file_path.exists():
-        content = read_file_safely(file_path)
+        content = read_obsidian_file(file_path)
         if content is None:
             logger.error(f"Failed to read existing file {file_path}")
             return False
@@ -202,7 +202,7 @@ def update_daily_note_file(file_path: Path, diary_entry: str, logger: structlog.
     updated_content = replace_diary_section(existing_content, diary_entry)
 
     # Write the updated content to the file
-    if write_file_safely(file_path, updated_content):
+    if write_obsidian_file(file_path, updated_content):
         logger.info(f"Daily diary entry written to {file_path}")
         return True
     else:

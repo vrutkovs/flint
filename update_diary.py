@@ -35,6 +35,8 @@ import structlog
 from dotenv import find_dotenv, load_dotenv
 from google import genai
 
+from utils.obsidian import write_obsidian_file
+
 # Add src directory to path to import modules
 current_dir = Path(__file__).parent
 src_dir = current_dir.parent / "src"
@@ -47,6 +49,7 @@ from plugins.diary import (  # noqa: E402
 )
 from plugins.mcp import MCPClient, MCPConfigReader  # noqa: E402
 from telega.settings import Settings  # noqa: E402
+from utils.obsidian import read_obsidian_file  # noqa: E402
 
 # Load environment variables
 load_dotenv(find_dotenv())
@@ -109,7 +112,6 @@ def validate_environment() -> tuple[Settings, genai.Client]:
     mcp_calendar_name = os.getenv("MCP_CALENDAR_NAME", "")
     mcp_todoist_name = os.getenv("MCP_TODOIST_NAME", "")
     mcp_weather_name = os.getenv("MCP_WEATHER_NAME", "")
-    tz = os.getenv("TZ", "UTC")
     system_instructions = os.getenv("SYSTEM_INSTRUCTIONS", DEFAULT_SYSTEM_INSTRUCTIONS)
 
     # Initialize GenAI client
@@ -126,7 +128,6 @@ def validate_environment() -> tuple[Settings, genai.Client]:
         logger=log,
         model_name=model_name,
         chat_id="manual_script",  # Placeholder for script usage
-        tz=tz,
         mcp_config_path=mcp_config_path,
         mcp_calendar_name=mcp_calendar_name,
         mcp_todoist_name=mcp_todoist_name,
@@ -203,12 +204,13 @@ def parse_date_string(date_str: str) -> datetime.date:
         raise ValueError(f"Invalid date format: {date_str}. Expected YYYY-MM-DD") from err
 
 
-async def fetch_calendar_data(settings: Settings, target_date: datetime.date) -> str | None:
+async def fetch_calendar_data(settings: Settings, mcps: MCPConfigReader, target_date: datetime.date) -> str | None:
     """
     Fetch calendar data for the specified date.
 
     Args:
         settings: Settings object with MCP configuration
+        mcps: Initialized MCPConfigReader
         target_date: Date to fetch calendar data for
 
     Returns:
@@ -217,9 +219,6 @@ async def fetch_calendar_data(settings: Settings, target_date: datetime.date) ->
     if not settings.agenda_mcp_calendar_name:
         log.info("Calendar MCP not configured, skipping calendar data")
         return None
-
-    mcps = MCPConfigReader(settings)
-    mcps.reload_config()
 
     calendar_mcp_config = mcps.get_mcp_configuration(settings.agenda_mcp_calendar_name)
     if not calendar_mcp_config:
@@ -245,12 +244,13 @@ async def fetch_calendar_data(settings: Settings, target_date: datetime.date) ->
         return None
 
 
-async def fetch_tasks_data(settings: Settings, target_date: datetime.date) -> str | None:
+async def fetch_tasks_data(settings: Settings, mcps: MCPConfigReader, target_date: datetime.date) -> str | None:
     """
     Fetch completed tasks data for the specified date.
 
     Args:
         settings: Settings object with MCP configuration
+        mcps: Initialized MCPConfigReader
         target_date: Date to fetch tasks data for
 
     Returns:
@@ -259,9 +259,6 @@ async def fetch_tasks_data(settings: Settings, target_date: datetime.date) -> st
     if not settings.agenda_mcp_todoist_name:
         log.info("Todoist MCP not configured, skipping tasks data")
         return None
-
-    mcps = MCPConfigReader(settings)
-    mcps.reload_config()
 
     todoist_mcp_config = mcps.get_mcp_configuration(settings.agenda_mcp_todoist_name)
     if not todoist_mcp_config:
@@ -349,24 +346,21 @@ def save_diary_entry(file_path: Path, diary_content: str, force: bool = False) -
             log.info("Use --force to overwrite existing entry")
             return False
 
-        try:
-            with open(file_path, encoding="utf-8") as file:
-                existing_content = file.read()
-        except Exception as e:
-            log.error(f"Failed to read existing file {file_path}: {e}")
+        existing_content = read_obsidian_file(file_path)
+        if existing_content is None:
+            log.error(f"Failed to read existing file {file_path}")
             return False
 
     # Replace or add diary section
     updated_content = replace_diary_section(existing_content, diary_content)
 
     # Write to file
-    try:
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(updated_content)
+    # Save diary entry
+    if write_obsidian_file(file_path, updated_content):
         log.info(f"Diary entry saved to: {file_path}")
         return True
-    except Exception as e:
-        log.error(f"Failed to write diary entry to file: {e}")
+    else:
+        log.error(f"Failed to write diary entry to file: {file_path}")
         return False
 
 
@@ -419,17 +413,21 @@ async def main() -> None:
 
     log.info(f"Generating diary entry for {target_date.strftime('%Y-%m-%d')}")
 
-    # Fetch data from MCPs
+    # Initialize MCP configuration
+    # Initialize MCP configuration
+    mcps: MCPConfigReader = MCPConfigReader(settings)
+    mcps.reload_config()
+
     calendar_data = None
     tasks_data = None
 
     if not args.no_calendar:
         log.info("Fetching calendar data...")
-        calendar_data = await fetch_calendar_data(settings, target_date)
+        calendar_data = await fetch_calendar_data(settings, mcps, target_date)
 
     if not args.no_tasks:
         log.info("Fetching tasks data...")
-        tasks_data = await fetch_tasks_data(settings, target_date)
+        tasks_data = await fetch_tasks_data(settings, mcps, target_date)
 
     # Create diary entry
     diary_content = create_diary_entry(calendar_data, tasks_data)
