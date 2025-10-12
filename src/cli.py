@@ -352,9 +352,16 @@ async def export_todoist_tasks_command(args: argparse.Namespace) -> None:
         log.error("Missing required environment variable: TODOIST_NOTES_FOLDER")
         sys.exit(1)
 
+    target_date = None
+    if args.date:
+        target_date = parse_date_string(args.date)
+        if not target_date:
+            log.error(f"Invalid date format: {args.date}. Please use YYYY-MM-DD.")
+            sys.exit(1)
+
     try:
         client = TodoistClient(token)
-        export_config = ExportConfig(Path(folder), include_completed=True, include_comments=True)
+        export_config = ExportConfig(Path(folder), include_completed=args.include_completed, include_comments=True)
 
         exported_count = await asyncio.get_event_loop().run_in_executor(
             None,
@@ -365,6 +372,7 @@ async def export_todoist_tasks_command(args: argparse.Namespace) -> None:
             args.project_name,
             args.filter_expr,
             args.include_completed,
+            target_date,
         )
         log.info(f"Successfully exported {exported_count} Todoist tasks.")
     except TodoistAPIError as e:
@@ -487,6 +495,12 @@ Examples:
         "--include-completed",
         action="store_true",
         help="Include completed tasks in the export",
+    )
+    todoist_export_parser.add_argument(
+        "--date",
+        metavar="YYYY-MM-DD",
+        default=None,
+        help="Export tasks completed on a specific date (YYYY-MM-DD format)",
     )
 
     return parser
