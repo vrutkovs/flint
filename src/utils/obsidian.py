@@ -1,5 +1,6 @@
 """Obsidian plugin for processing Obsidian markdown files and content."""
 
+import difflib
 import re
 from pathlib import Path
 from typing import Final
@@ -76,12 +77,29 @@ def write_obsidian_file(file_path: Path, content: str) -> bool:
     Returns:
         True if write successful, False otherwise
     """
+    logger = structlog.get_logger()
+    existing_content = None
+    if file_path.exists():
+        existing_content = read_obsidian_file(file_path)
+
+    if existing_content is not None and existing_content != content:
+        diff = difflib.unified_diff(
+            existing_content.splitlines(keepends=True),
+            content.splitlines(keepends=True),
+            fromfile=f"a/{file_path.name}",
+            tofile=f"b/{file_path.name}",
+            lineterm="",  # To avoid extra newlines if splitlines(keepends=True) is used
+        )
+        diff_str = "".join(diff)
+        if diff_str:  # Only log if there's an actual diff
+            logger.info("Obsidian file content diff before writing", file_path=file_path, diff=diff_str)
+
     try:
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(content)
         return True
     except Exception as e:
-        structlog.get_logger().error(f"Failed to write to file {file_path}: {e}")
+        logger.error(f"Failed to write to file {file_path}: {e}")
         return False
 
 
