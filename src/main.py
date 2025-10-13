@@ -73,6 +73,7 @@ MCP_WEATHER_NAME: str | None = os.environ.get("MCP_WEATHER_NAME")
 
 DAILY_NOTE_FOLDER: str | None = os.environ.get("DAILY_NOTE_FOLDER")
 TODOIST_NOTES_FOLDER: str | None = os.environ.get("TODOIST_NOTES_FOLDER")
+TODOIST_NOTES_INCLUDE_COMPLETED: str | None = os.environ.get("TODOIST_NOTES_INCLUDE_COMPLETED")
 TODOIST_NOTES_SCHEDULE: str | None = os.environ.get("TODOIST_NOTES_SCHEDULE", "1h")
 TODOIST_API_TOKEN: str | None = os.environ.get("TODOIST_API_TOKEN")
 
@@ -226,7 +227,7 @@ elif SCHEDULED_DIARY_TIME:
     log.warning("SCHEDULED_DIARY_TIME is set but DAILY_NOTE_FOLDER is missing. Diary scheduling will not be enabled.")
 
 # Create scheduler for Todoist sync
-if TODOIST_NOTES_FOLDER and TODOIST_API_TOKEN and TODOIST_NOTES_SCHEDULE:
+if TODOIST_NOTES_FOLDER and TODOIST_API_TOKEN and TODOIST_NOTES_SCHEDULE and TODOIST_NOTES_INCLUDE_COMPLETED:
     job_queue = app.job_queue
     if not job_queue:
         log.error("Failed to create job queue")
@@ -246,8 +247,12 @@ if TODOIST_NOTES_FOLDER and TODOIST_API_TOKEN and TODOIST_NOTES_SCHEDULE:
         log.warning(f"Unrecognized schedule format '{schedule_value}', defaulting to 1 hour")
 
     # Configure export
+    include_completed = TODOIST_NOTES_INCLUDE_COMPLETED == "true"
     export_config = ExportConfig(
-        output_dir=Path(TODOIST_NOTES_FOLDER), include_completed=False, include_comments=True, tag_prefix="todoist"
+        output_dir=Path(TODOIST_NOTES_FOLDER),
+        include_completed=include_completed,
+        include_comments=True,
+        tag_prefix="todoist",
     )
 
     todoist_data = TodoistData(settings=settings, api_token=TODOIST_API_TOKEN, export_config=export_config)
