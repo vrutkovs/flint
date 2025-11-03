@@ -239,17 +239,17 @@ async def generate_diary_entry(context: ContextTypes.DEFAULT_TYPE) -> None:
     settings.logger.info("Starting diary entry generation")
 
     # Get current date and time
-    now = datetime.datetime.now()
-    date_str = now.strftime("%Y-%m-%d")
+    today = datetime.datetime.today()
+    date_str = today.strftime("%Y-%m-%d")
 
     # Initialize MCP configuration
     mcps: MCPConfigReader = MCPConfigReader(settings)
     mcps.reload_config()
 
     # Fetch all diary components
-    calendar_data = await fetch_calendar_data(settings, mcps, now)
-    tasks_done = fetch_completed_tasks_data(settings, now)
-    in_progress_section = fetch_in_progress_tasks_data(settings, now)
+    calendar_data = await fetch_calendar_data(settings, mcps, today)
+    tasks_done = fetch_completed_tasks_data(settings, today)
+    in_progress_section = fetch_in_progress_tasks_data(settings, today)
 
     # Create diary entry content
     diary_entry = create_diary_content(calendar_data, tasks_done, in_progress_section)
