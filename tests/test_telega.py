@@ -9,7 +9,7 @@ import yaml
 from telegram import Animation, Chat, Document, Message, PhotoSize, Sticker, Update, User, Video
 from telegram.ext import ContextTypes
 
-from src.plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
+from plugins.mcp import MCPClient, MCPConfigReader, MCPConfiguration, StdioServerParameters
 from telega.main import Telega
 from telega.settings import Settings
 
@@ -27,6 +27,7 @@ class TestTelega:
         settings.model_name = "test-model"
         settings.genconfig = Mock()
         settings.qa_chain = None
+        settings.mcp_config_path = "/tmp/test_mcp_config.yaml"
         return settings
 
     @pytest.fixture
@@ -390,18 +391,52 @@ class TestTelega:
 
         mock_qa_chain = Mock()
         mock_qa_chain.invoke.return_value = {
-            "result": "The capital is Paris.",
+            "answer": "The capital is Paris.",
             "source_documents": [Mock(metadata={"source": "doc1.pdf"}), Mock(metadata={"source": "doc2.pdf"})],
         }
         telega.settings.qa_chain = mock_qa_chain
 
         await telega.handle_rag_request(mock_update, mock_context)
 
-        mock_qa_chain.invoke.assert_called_once_with({"query": "/rag What is the capital?"})
+        mock_qa_chain.invoke.assert_called_once_with("/rag What is the capital?")
         call_args = telega.reply_to_message.call_args[0]
         assert "The capital is Paris." in call_args[1]
         assert "doc1.pdf" in call_args[1]
         assert "doc2.pdf" in call_args[1]
+
+    @pytest.mark.asyncio
+    async def test_handle_rag_request_with_obsidian_sources(self, telega, mock_update, mock_context):
+        """Test RAG request with Obsidian vault sources."""
+        mock_update.message.text = "/rag What are the notes about?"
+        telega.is_user_allowed = AsyncMock(return_value=True)
+        telega.reply_to_message = AsyncMock()
+
+        mock_qa_chain = Mock()
+        mock_qa_chain.invoke.return_value = {
+            "answer": "The notes are about various topics.",
+            "source_documents": [
+                Mock(metadata={"source": "/home/vrutkovs/Documents/obsidian/vadim/Projects/Project A.md"}),
+                Mock(metadata={"source": "/home/vrutkovs/Documents/obsidian/vadim/Daily Notes/2024-01-15.md"}),
+                Mock(metadata={"source": "/other/path/doc.txt"}),
+            ],
+        }
+        telega.settings.qa_chain = mock_qa_chain
+
+        await telega.handle_rag_request(mock_update, mock_context)
+
+        mock_qa_chain.invoke.assert_called_once_with("/rag What are the notes about?")
+        call_args = telega.reply_to_message.call_args[0]
+        reply_text = call_args[1]
+
+        # Check the answer is included
+        assert "The notes are about various topics." in reply_text
+
+        # Check Obsidian links are formatted correctly with markdown syntax
+        assert "[Projects/Project A.md](obsidian://open?vault=vadim&file=Projects/Project%20A.md)" in reply_text
+        assert "[Daily Notes/2024-01-15.md](obsidian://open?vault=vadim&file=Daily%20Notes/2024-01-15.md)" in reply_text
+
+        # Check non-Obsidian source is kept as-is
+        assert "/other/path/doc.txt" in reply_text
 
     @pytest.mark.asyncio
     async def test_handle_rag_request_no_qa_chain(self, telega, mock_update, mock_context):
@@ -513,7 +548,7 @@ class TestTelega:
 
         # Setup RAG chain
         mock_qa_chain = Mock()
-        mock_qa_chain.invoke.return_value = {"result": "The capital is Paris.", "source_documents": []}
+        mock_qa_chain.invoke.return_value = {"answer": "The capital is Paris.", "source_documents": []}
         telega.settings.qa_chain = mock_qa_chain
 
         # Setup GenAI response
@@ -923,12 +958,12 @@ class TestMCPClient:
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch("src.plugins.mcp.stdio_client") as mock_stdio:
+        with patch("plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
             mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
-            with patch("src.plugins.mcp.ClientSession") as mock_session_class:
+            with patch("plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
                 mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
@@ -952,13 +987,13 @@ class TestMCPClient:
 
         with (
             patch.dict(os.environ, {"MCP_test_mcp_PROMPT": "Custom prefix"}),
-            patch("src.plugins.mcp.stdio_client") as mock_stdio,
+            patch("plugins.mcp.stdio_client") as mock_stdio,
         ):
             mock_read = AsyncMock()
             mock_write = AsyncMock()
             mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
-            with patch("src.plugins.mcp.ClientSession") as mock_session_class:
+            with patch("plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
                 mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
@@ -986,12 +1021,12 @@ class TestMCPClient:
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch("src.plugins.mcp.stdio_client") as mock_stdio:
+        with patch("plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
             mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
-            with patch("src.plugins.mcp.ClientSession") as mock_session_class:
+            with patch("plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
                 mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
@@ -1014,12 +1049,12 @@ class TestMCPClient:
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch("src.plugins.mcp.stdio_client") as mock_stdio:
+        with patch("plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
             mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
-            with patch("src.plugins.mcp.ClientSession") as mock_session_class:
+            with patch("plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
                 mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
@@ -1041,12 +1076,12 @@ class TestMCPClient:
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch("src.plugins.mcp.stdio_client") as mock_stdio:
+        with patch("plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
             mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
-            with patch("src.plugins.mcp.ClientSession") as mock_session_class:
+            with patch("plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
                 mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)
@@ -1070,12 +1105,12 @@ class TestMCPClient:
 
         mock_settings.genai_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
-        with patch("src.plugins.mcp.stdio_client") as mock_stdio:
+        with patch("plugins.mcp.stdio_client") as mock_stdio:
             mock_read = AsyncMock()
             mock_write = AsyncMock()
             mock_stdio.return_value.__aenter__ = AsyncMock(return_value=(mock_read, mock_write))
 
-            with patch("src.plugins.mcp.ClientSession") as mock_session_class:
+            with patch("plugins.mcp.ClientSession") as mock_session_class:
                 mock_session = AsyncMock()
                 mock_session.initialize = AsyncMock()
                 mock_session_class.return_value.__aenter__ = AsyncMock(return_value=mock_session)

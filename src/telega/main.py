@@ -2,6 +2,7 @@
 
 import io
 from typing import Any, cast
+from urllib.parse import quote
 
 from chatgpt_md_converter import telegram_format  # type: ignore[import-not-found]
 from PIL import Image
@@ -369,16 +370,34 @@ class Telega:
         if not update.message or not update.message.text or not self.settings.qa_chain:
             return
 
-        self.settings.logger.info("Processing text message", update_id=update.update_id)
+        self.settings.logger.info("Processing rag request", update_id=update.update_id)
 
         try:
-            result: dict[str, Any] = self.settings.qa_chain.invoke({"query": update.message.text})
-            reply_text: str = result["result"].strip()
-            sources = {doc.metadata["source"] for doc in result["source_documents"]}
-            if sources:
-                reply_text += "\nSources:"
-                for source in sorted(sources):
-                    reply_text += f"\n- {source}"
+            # Invoke the new LCEL chain with just the question
+            result: dict[str, Any] = self.settings.qa_chain.invoke(update.message.text)
+            reply_text: str = result["answer"].strip()
+
+            # Get source documents from the retriever result
+            source_docs = result.get("source_documents", [])
+            if source_docs:
+                sources = {doc.metadata.get("source", "Unknown") for doc in source_docs}
+                if sources:
+                    reply_text += "\nSources:"
+                    for source in sorted(sources):
+                        # Format as Obsidian link
+                        # Strip the prefix /home/vrutkovs/Documents/obsidian/vadim/
+                        obsidian_prefix = "/home/vrutkovs/Documents/obsidian/vadim/"
+                        if source.startswith(obsidian_prefix):
+                            # Remove the prefix and format as Obsidian URL
+                            note_path = source[len(obsidian_prefix) :]
+                            # URL encode the note path for the link
+                            encoded_path = quote(note_path)
+                            obsidian_link = f"obsidian://open?vault=vadim&file={encoded_path}"
+                            # Wrap in markdown link with file path as display text
+                            reply_text += f"\n- [{note_path}]({obsidian_link})"
+                        else:
+                            # Fallback for non-Obsidian sources
+                            reply_text += f"\n- {source}"
             await self.reply_to_message(update, reply_text)
 
         except Exception as e:
